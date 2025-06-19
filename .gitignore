@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Dados/modelos grandes
+backend/model.pkl
+
+# Configs/env
+.env
+
+# MongoDB dump
+*.bson
+*.json
+
+# Node.js
+node_modules/

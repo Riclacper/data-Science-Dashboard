@@ -1,0 +1,9 @@
+flask
+pymongo
+flask-cors
+scikit-learn
+pandas
+joblib
+
+
+MONGO_URI = f"mongodb+srv://icanadareparos:ZzkSH4SSOzGSsnuc@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Crimes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+      color: #222;
+      padding: 30px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    .controle {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    input, select, button {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #218838;
+    }
+
+    canvas {
+      max-width: 100%;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 30px;
+    }
+
+    #tabelaAvaliacao {
+      border-collapse: collapse;
+      width: 100%;
+      background-color: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-top: 30px;
+    }
+
+    #tabelaAvaliacao th, #tabelaAvaliacao td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    #tabelaAvaliacao th {
+      background-color: #f5f5f5;
+      font-weight: 600;
+      color: #333;
+    }
+
+    #tabelaAvaliacao td {
+      color: #444;
+    }
+
+    #tabelaAvaliacao tr:last-child td {
+      border-bottom: none;
+    }
+
+    #tabelaAvaliacao tr:hover {
+      background-color: #f9f9f9;
+    }
+  </style>
+
+  <script>
+    if (localStorage.getItem('usuario_logado') !== 'true') {
+      window.location.href = 'login.html';
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Dashboard Forense</h1>
+    <button onclick="logout()">Sair</button>
+  </header>
+
+  <div class="controle">
+    <label for="filtro">Filtrar por tipo:</label>
+    <select id="filtro" onchange="carregarCasos()">
+      <option value="">Todos</option>
+      <option value="Furto">Furto</option>
+      <option value="Homicídio">Homicídio</option>
+      <option value="Roubo">Roubo</option>
+      <option value="Agressão">Agressão</option>
+      <option value="Estupro">Estupro</option>
+    </select>
+    <button onclick="exportarCSV()">Exportar CSV</button>
+  </div>
+
+  <canvas id="grafico"></canvas>
+  <canvas id="graficoFeatures"></canvas>
+
+  <h2>Métricas de Avaliação do Modelo</h2>
+  <table id="tabelaAvaliacao">
+    <thead>
+      <tr>
+        <th>Classe</th>
+        <th>Desempenho</th>
+        <th>Precisão</th>
+        <th>Cobertura</th>
+        <th>Total de Casos</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table><br></br>
+
+  <canvas id="graficoRadarMetricas"></canvas>
+  <canvas id="graficoMetricas"></canvas>
+
+  <h2>Previsão do Status da Ocorrência</h2>
+  <div class="controle">
+    <select id="tipoCrime">
+      <option>Furto</option>
+      <option>Roubo</option>
+      <option>Homicídio</option>
+      <option>Agressão</option>
+      <option>Estupro</option>
+    </select>
+    <select id="cidade">
+      <option>Recife</option>
+      <option>Olinda</option>
+      <option>Salvador</option>
+      <option>Campinas</option>
+      <option>Rio de Janeiro</option>
+    </select>
+    <select id="uf">
+      <option>PE</option>
+      <option>SP</option>
+      <option>BA</option>
+      <option>RJ</option>
+    </select>
+    <input id="hora" type="time" placeholder="Hora">
+    <button onclick="predizer()">Prever Status</button>
+  </div>
+  <p id="resposta"></p>
+
+<h2>Enviar Relatório por E-mail</h2>
+<div class="controle">
+  <input id="emailDestino" type="email" placeholder="Digite o e-mail" />
+  <button onclick="enviarRelatorio()">Enviar Relatório</button>
+</div>
+<p id="statusEnvio"></p>
+
+
+  <script src="script.js"></script>
+</body>
+</html>
