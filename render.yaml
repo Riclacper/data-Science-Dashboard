@@ -37,8 +37,7 @@ services:
         value: production
 
   # ── Frontend: Static Site ───────────────────────────────────────────────────
-  - type: web
+  - type: static
     name: forense-frontend
-    runtime: static
     staticPublishPath: ./frontend
     # Após o backend subir, atualize a URL em frontend/config.js e faça novo deploy.
