@@ -1,19 +1,24 @@
 import os
 import json
+import logging
+import datetime
 import smtplib
 from email.message import EmailMessage
-from urllib.parse import quote_plus
 
 import joblib
 import pandas as pd
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from fpdf import FPDF
 from pymongo import MongoClient
 from sklearn.preprocessing import LabelEncoder
 
 # === Carregar variáveis de ambiente ===
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
@@ -21,7 +26,10 @@ CORS(app)
 # === Conexão MongoDB (via variável de ambiente) ===
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
-    raise RuntimeError("Variável de ambiente MONGO_URI não definida. Copie .env.example para .env e preencha.")
+    raise RuntimeError(
+        "Variável de ambiente MONGO_URI não definida. "
+        "Copie backend/.env.example para backend/.env e preencha."
+    )
 
 client = MongoClient(MONGO_URI)
 db = client["forense"]
@@ -54,10 +62,11 @@ def login():
     usuario = dados.get('usuario', '')
     senha = dados.get('senha', '')
 
-    LOGIN_USER = os.getenv('LOGIN_USER', 'admin')
-    LOGIN_PASS = os.getenv('LOGIN_PASS', '')
+    LOGIN_USER = os.getenv('LOGIN_USER')
+    LOGIN_PASS = os.getenv('LOGIN_PASS')
 
-    if not LOGIN_PASS:
+    if not LOGIN_USER or not LOGIN_PASS:
+        logger.error("Variáveis LOGIN_USER ou LOGIN_PASS não configuradas.")
         return jsonify({"erro": "Credenciais de login não configuradas no servidor."}), 500
 
     if usuario == LOGIN_USER and senha == LOGIN_PASS:
@@ -114,7 +123,8 @@ def predizer_status():
         return jsonify({"previsao_status": label})
 
     except Exception as e:
-        return jsonify({"erro": str(e)}), 400
+        logger.exception("Erro ao predizer status")
+        return jsonify({"erro": "Erro ao processar predição. Verifique os dados enviados."}), 400
 
 
 # === ROTA: Teste simples de conexão ===
@@ -133,9 +143,12 @@ def avaliar_modelo():
             avaliacao = json.load(f)
         return jsonify(avaliacao)
     except FileNotFoundError:
-        return jsonify({"erro": "avaliacao_modelo.json não encontrado. Execute train_model_avaliado.py primeiro."}), 404
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        return jsonify({
+            "erro": "avaliacao_modelo.json não encontrado. Execute train_model_avaliado.py primeiro."
+        }), 404
+    except Exception:
+        logger.exception("Erro ao carregar avaliacao_modelo.json")
+        return jsonify({"erro": "Erro interno ao carregar avaliação do modelo."}), 500
 
 
 # === ROTA: Labels legíveis das classes ===
@@ -146,7 +159,9 @@ def classes():
         with open(labels_path, "r", encoding="utf-8") as f:
             return jsonify(json.load(f))
     except FileNotFoundError:
-        return jsonify({"erro": "classes_labels.json não encontrado. Execute train_model_avaliado.py primeiro."}), 404
+        return jsonify({
+            "erro": "classes_labels.json não encontrado. Execute train_model_avaliado.py primeiro."
+        }), 404
 
 
 # === ROTA: Enviar relatório por e-mail ===
@@ -157,17 +172,17 @@ def enviar_relatorio():
 
     EMAIL_ORIGEM = os.getenv('EMAIL_ORIGEM')
     SENHA_APP = os.getenv('SENHA_APP')
+    SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
 
     if not EMAIL_ORIGEM or not SENHA_APP:
+        logger.error("Variáveis EMAIL_ORIGEM ou SENHA_APP não configuradas.")
         return jsonify({"erro": "Credenciais de e-mail não configuradas no servidor."}), 500
 
     if not email_destino or '@' not in email_destino:
         return jsonify({"erro": "E-mail de destino inválido."}), 400
 
     try:
-        from fpdf import FPDF
-        import datetime
-
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Helvetica", "B", 16)
@@ -201,14 +216,15 @@ def enviar_relatorio():
             msg.add_attachment(f.read(), maintype="application", subtype="pdf",
                                filename="relatorio_avaliacao.pdf")
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as smtp:
             smtp.login(EMAIL_ORIGEM, SENHA_APP)
             smtp.send_message(msg)
 
         return jsonify({"msg": "Relatório enviado com sucesso!"})
 
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+    except Exception:
+        logger.exception("Erro ao enviar relatório")
+        return jsonify({"erro": "Erro interno ao enviar o relatório."}), 500
 
 
 # === INICIAR SERVIDOR ===
