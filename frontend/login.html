@@ -36,6 +36,7 @@
       margin-bottom: 15px;
       border: 1px solid #ccc;
       border-radius: 5px;
+      box-sizing: border-box;
     }
 
     button {
@@ -51,30 +52,52 @@
       display: block;
     }
 
-
     button:hover {
       background-color: #218838;
+    }
+
+    #erroLogin {
+      color: #c0392b;
+      margin-top: 12px;
+      font-size: 14px;
+      min-height: 20px;
     }
   </style>
 </head>
 <body>
   <div class="box">
-  <img src="../backend/logo.png" alt="Logo" style="width: 120px; display: block; margin: 0 auto 16px auto;">
+    <img src="../backend/logo.png" alt="Logo" style="width: 120px; display: block; margin: 0 auto 16px auto;">
     <input type="text" id="usuario" placeholder="Usuário" />
     <input type="password" id="senha" placeholder="Senha" onkeydown="checarEnter(event)" />
     <button onclick="fazerLogin()">Entrar</button>
+    <p id="erroLogin"></p>
   </div>
 
   <script>
-    function fazerLogin() {
+    const API = 'http://127.0.0.1:5000';
+
+    async function fazerLogin() {
       const usuario = document.getElementById('usuario').value;
       const senha = document.getElementById('senha').value;
+      const erroEl = document.getElementById('erroLogin');
+      erroEl.textContent = '';
 
-      if (usuario === 'admin' && senha === '1234') {
-        localStorage.setItem('usuario_logado', 'true');
-        window.location.href = 'index.html';
-      } else {
-        alert('Usuário ou senha incorretos!');
+      try {
+        const res = await fetch(`${API}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario, senha })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          localStorage.setItem('usuario_logado', 'true');
+          window.location.href = 'index.html';
+        } else {
+          erroEl.textContent = data.erro || 'Usuário ou senha incorretos.';
+        }
+      } catch (e) {
+        erroEl.textContent = 'Erro ao conectar com o servidor.';
       }
     }
 
@@ -84,7 +107,6 @@
       }
     }
 
-    // Redireciona se já estiver logado
     if (localStorage.getItem('usuario_logado') === 'true') {
       window.location.href = 'index.html';
     }

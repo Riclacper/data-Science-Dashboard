@@ -1,49 +1,73 @@
-print(">>>>> APP INICIADO: backend/app.py usado com sucesso")
+import os
+import json
+import smtplib
+from email.message import EmailMessage
+from urllib.parse import quote_plus
 
+import joblib
+import pandas as pd
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
-from urllib.parse import quote_plus
-import joblib
-import os
-import pandas as pd
-import json
+from sklearn.preprocessing import LabelEncoder
+
+# === Carregar variáveis de ambiente ===
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# === Conexão MongoDB Atlas ===
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://icanadareparos:ZzkSH4SSOzGSsnuc@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
+# === Conexão MongoDB (via variável de ambiente) ===
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError("Variável de ambiente MONGO_URI não definida. Copie .env.example para .env e preencha.")
+
 client = MongoClient(MONGO_URI)
 db = client["forense"]
 colecao = db["ocorrencias"]
 
 # === Carrega o modelo de ML ===
-model_path = 'model.pkl'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, '..', 'model', 'model.pkl')
 model = joblib.load(model_path)
 
 # === Recriar codificadores com base nos dados reais ===
-dados = list(colecao.find({}, {"tipoCrime": 1, "cidade": 1, "uf": 1, "_id": 0}))
-df = pd.DataFrame(dados)
+dados_enc = list(colecao.find({}, {"tipoCrime": 1, "cidade": 1, "uf": 1, "_id": 0}))
+df_enc = pd.DataFrame(dados_enc)
 
-from sklearn.preprocessing import LabelEncoder
-le_tipoCrime = LabelEncoder().fit(df["tipoCrime"])
-le_cidade = LabelEncoder().fit(df["cidade"])
-le_uf = LabelEncoder().fit(df["uf"])
+le_tipoCrime = LabelEncoder().fit(df_enc["tipoCrime"])
+le_cidade = LabelEncoder().fit(df_enc["cidade"])
+le_uf = LabelEncoder().fit(df_enc["uf"])
 
 
 # === ROTA: Página inicial ===
 @app.route('/')
 def home():
-    return "API de análise de casos conectada ao Atlas"
+    return "API de análise de casos conectada ao banco de dados"
+
+
+# === ROTA: Login ===
+@app.route('/login', methods=['POST'])
+def login():
+    dados = request.get_json()
+    usuario = dados.get('usuario', '')
+    senha = dados.get('senha', '')
+
+    LOGIN_USER = os.getenv('LOGIN_USER', 'admin')
+    LOGIN_PASS = os.getenv('LOGIN_PASS', '')
+
+    if not LOGIN_PASS:
+        return jsonify({"erro": "Credenciais de login não configuradas no servidor."}), 500
+
+    if usuario == LOGIN_USER and senha == LOGIN_PASS:
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "erro": "Usuário ou senha incorretos."}), 401
 
 
 # === ROTA: Retorna todos os casos ===
 @app.route('/casos', methods=['GET'])
 def listar():
-    print(">>> /casos foi chamado!")
     casos = list(colecao.find({}, {'_id': 0}))
     return jsonify(casos)
 
@@ -82,20 +106,20 @@ def predizer_status():
 
         pred_index = model.predict(entrada)[0]
 
-        with open("classes_labels.json", encoding="utf-8") as f:
+        labels_path = os.path.join(BASE_DIR, 'classes_labels.json')
+        with open(labels_path, encoding="utf-8") as f:
             labels = json.load(f)
 
         label = labels.get(str(pred_index), str(pred_index))
         return jsonify({"previsao_status": label})
 
     except Exception as e:
-        return jsonify({"erro": str(e)})
+        return jsonify({"erro": str(e)}), 400
 
 
 # === ROTA: Teste simples de conexão ===
 @app.route('/teste')
 def teste():
-    print(">>> Endpoint /teste acessado!")
     doc = colecao.find_one({}, {'_id': 0})
     return jsonify(doc if doc else {"erro": "colecao vazia"})
 
@@ -104,24 +128,90 @@ def teste():
 @app.route('/avaliar-modelo', methods=['GET'])
 def avaliar_modelo():
     try:
-        with open("avaliacao_modelo.json", "r", encoding="utf-8") as f:
+        avaliacao_path = os.path.join(BASE_DIR, 'avaliacao_modelo.json')
+        with open(avaliacao_path, "r", encoding="utf-8") as f:
             avaliacao = json.load(f)
         return jsonify(avaliacao)
+    except FileNotFoundError:
+        return jsonify({"erro": "avaliacao_modelo.json não encontrado. Execute train_model_avaliado.py primeiro."}), 404
     except Exception as e:
-        return jsonify({"erro": str(e)})
-
+        return jsonify({"erro": str(e)}), 500
 
 
 # === ROTA: Labels legíveis das classes ===
 @app.route('/classes', methods=['GET'])
 def classes():
     try:
-        with open("classes_labels.json", "r", encoding="utf-8") as f:
+        labels_path = os.path.join(BASE_DIR, 'classes_labels.json')
+        with open(labels_path, "r", encoding="utf-8") as f:
             return jsonify(json.load(f))
     except FileNotFoundError:
-        return jsonify({"erro": "Arquivo classes_labels.json não encontrado"}), 404
+        return jsonify({"erro": "classes_labels.json não encontrado. Execute train_model_avaliado.py primeiro."}), 404
+
+
+# === ROTA: Enviar relatório por e-mail ===
+@app.route('/enviar-relatorio', methods=['POST'])
+def enviar_relatorio():
+    dados = request.get_json()
+    email_destino = dados.get('email', '')
+
+    EMAIL_ORIGEM = os.getenv('EMAIL_ORIGEM')
+    SENHA_APP = os.getenv('SENHA_APP')
+
+    if not EMAIL_ORIGEM or not SENHA_APP:
+        return jsonify({"erro": "Credenciais de e-mail não configuradas no servidor."}), 500
+
+    if not email_destino or '@' not in email_destino:
+        return jsonify({"erro": "E-mail de destino inválido."}), 400
+
+    try:
+        from fpdf import FPDF
+        import datetime
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "Relatório de Avaliação do Modelo", ln=True, align="C")
+        pdf.ln(8)
+
+        logo_path = os.path.join(BASE_DIR, 'logo.png')
+        if os.path.exists(logo_path):
+            pdf.image(logo_path, x=10, y=20, w=40)
+            pdf.ln(30)
+
+        pdf.set_font("Helvetica", "", 12)
+        data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        pdf.cell(0, 10, f"Gerado em: {data}", ln=True)
+        pdf.ln(8)
+        pdf.multi_cell(0, 10,
+            "Este é um relatório automático gerado pelo sistema de predição forense.\n"
+            "Os dados estão disponíveis no dashboard.")
+
+        pdf_path = os.path.join(BASE_DIR, 'relatorio_avaliacao.pdf')
+        pdf.output(pdf_path)
+
+        msg = EmailMessage()
+        msg["Subject"] = "Relatório de Avaliação do Modelo"
+        msg["From"] = EMAIL_ORIGEM
+        msg["To"] = email_destino
+        msg.set_content(
+            "Olá,\n\nSegue em anexo o relatório automático gerado pelo sistema.\n\nAtt,\nSistema Forense"
+        )
+        with open(pdf_path, "rb") as f:
+            msg.add_attachment(f.read(), maintype="application", subtype="pdf",
+                               filename="relatorio_avaliacao.pdf")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_ORIGEM, SENHA_APP)
+            smtp.send_message(msg)
+
+        return jsonify({"msg": "Relatório enviado com sucesso!"})
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 
 # === INICIAR SERVIDOR ===
 if __name__ == '__main__':
-    app.run(debug=True)
+    debug_mode = os.getenv('FLASK_ENV', 'production') == 'development'
+    app.run(debug=debug_mode)

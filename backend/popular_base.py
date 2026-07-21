@@ -1,25 +1,25 @@
+import os
 from pymongo import MongoClient
 from random import choice, randint
-from datetime import datetime
-from urllib.parse import quote_plus
+from dotenv import load_dotenv
 
-# Conexão com Atlas
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://{USUARIO}:{SENHA}@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
+load_dotenv()
+
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError("Variável de ambiente MONGO_URI não definida.")
+
 client = MongoClient(MONGO_URI)
-
 db = client["forense"]
 colecao = db["ocorrencias"]
 
-# Dados simulados
 tipos = ["Homicídio", "Furto", "Roubo", "Agressão", "Estupro"]
 status_options = ["Em análise", "Concluído", "Arquivado", "Em investigação"]
 ufs = ["PE", "SP", "RJ", "BA"]
 cidades = ["Recife", "Olinda", "Salvador", "Campinas", "Rio de Janeiro"]
 
 novos = []
-for _ in range(100): 
+for _ in range(100):
     doc = {
         "tipoCrime": choice(tipos),
         "status": choice(status_options),

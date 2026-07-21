@@ -10,6 +10,7 @@ backend/model.pkl
 
 # Configs/env
 .env
+backend/.env
 
 # MongoDB dump
 *.bson

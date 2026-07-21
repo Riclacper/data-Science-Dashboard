@@ -1,24 +1,28 @@
-
 # Dashboard Forense — Análise e Predição de Casos Criminais
 
-Projeto completo de **Data Science Aplicada**, integrando backend em Flask + MongoDB, frontend em HTML/JS (Chart.js) e Machine Learning (XGBoost), para análise e visualização de ocorrências criminais.
+Projeto de **Data Science Aplicada**, integrando backend em Flask + MongoDB, frontend em HTML/JS (Chart.js) e Machine Learning (RandomForest/scikit-learn), para análise e visualização de ocorrências criminais.
 
 ---
 
 ## 🗂️ Estrutura do Projeto
 
 ```
-crime-analysis-app-recuperacao/
+data-Science-Dashboard/
 ├── backend/
-│   ├── app.py                 # API Flask + Endpoints ML
-│   ├── requirements.txt       # Dependências Python
-│   ├── train_model.py         # Script de treinamento do modelo ML
-│   ├── model.pkl              # Pipeline do modelo treinado
-│   └── ...
+│   ├── app.py                    # API Flask + Endpoints ML
+│   ├── requirements.txt          # Dependências Python
+│   ├── train_model_avaliado.py   # Script de treinamento do modelo ML
+│   ├── popular_base.py           # Popula o banco com dados simulados
+│   ├── popular_em_investigacao.py
+│   ├── verificar_status_mongo.py
+│   ├── gerar_relatorio_com_email.py
+│   └── .env.example              # Modelo de variáveis de ambiente
+├── model/
+│   └── model.pkl                 # Modelo treinado (gerado por train_model_avaliado.py)
 ├── frontend/
-│   ├── index.html             # Dashboard visual (HTML + CSS)
-│   ├── script.js              # Integração e gráficos (JS)
-│   └── ...
+│   ├── index.html                # Dashboard visual (HTML + CSS)
+│   ├── login.html                # Tela de login
+│   └── script.js                 # Integração e gráficos (JS)
 └── README.md
 ```
 
@@ -28,145 +32,110 @@ crime-analysis-app-recuperacao/
 
 - **Python 3.9+**
 - **MongoDB** (local ou Atlas)
-- **Node.js** *(opcional, apenas se quiser usar outro servidor)*
-- **pip** (Python package manager)
+- **pip**
 
 ---
 
 ## 🚀 Instalação e Execução
 
-### 1. **Clone o repositório e acesse a pasta:**
+### 1. Clone o repositório e acesse a pasta
 ```bash
-git clone https://github.com/RICLACPER/crime-analysis-app-recuperacao.git
-cd crime-analysis-app-recuperacao
+git clone https://github.com/Riclacper/data-Science-Dashboard.git
+cd data-Science-Dashboard
 ```
 
-### 2. **Instale as dependências do backend**
+### 2. Instale as dependências do backend
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 3. **Configure o MongoDB**
+### 3. Configure as variáveis de ambiente
 
-- Certifique-se de que o MongoDB está rodando localmente (`mongodb://localhost:27017/`) ou ajuste o URI em `app.py` para seu cluster Atlas.
-- O sistema cria/popula o banco e coleção automaticamente no primeiro uso.
-
-### 4. **Treine o modelo ML (opcional, se quiser gerar um novo model.pkl)**
+Copie o arquivo de exemplo e preencha com seus dados:
 ```bash
-python train_model.py
+cp backend/.env.example backend/.env
 ```
-> O arquivo `model.pkl` será gerado/atualizado na pasta backend.
 
-### 5. **Inicie o backend Flask**
+Edite `backend/.env`:
+```
+MONGO_URI=mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/forense?retryWrites=true&w=majority
+LOGIN_USER=admin
+LOGIN_PASS=minha_senha_segura
+EMAIL_ORIGEM=seuemail@gmail.com
+SENHA_APP=senha_de_app_gmail
+FLASK_ENV=development
+```
+
+> ⚠️ **Nunca commite o arquivo `.env`** — ele já está no `.gitignore`.
+
+### 4. Popule o banco de dados (opcional)
 ```bash
-python app.py
+python backend/popular_base.py
+```
+
+### 5. Treine o modelo ML
+```bash
+python backend/train_model_avaliado.py
+```
+> Isso gera `model/model.pkl`, `backend/avaliacao_modelo.json` e `backend/classes_labels.json`.
+
+### 6. Inicie o backend Flask
+```bash
+python backend/app.py
 ```
 O backend estará em [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
-### 6. **Inicie o frontend**
+### 7. Inicie o frontend
 ```bash
-cd ../frontend
+cd frontend
 python3 -m http.server 8000
 ```
-Abra o navegador em [http://localhost:8000/index.html](http://localhost:8000/index.html).
+Abra o navegador em [http://localhost:8000/login.html](http://localhost:8000/login.html).
 
 ---
 
 ## 📊 Funcionalidades do Dashboard
 
-- **Visualização de Casos:** Gráfico de rosca (por tipo, localização, etnia).
-- **Distribuição de Idades das Vítimas:** Gráfico de barras.
-- **Importância das Variáveis no Modelo ML:** Gráfico horizontal com as features mais relevantes na predição dos tipos de crime.
-- **Filtros de data e variável:** Permite análise personalizada.
-- **Predição de novos casos (endpoint ML).**
+- **Visualização de Casos:** Gráfico de barras por tipo de crime, com filtro.
+- **Importância das Variáveis:** Gráfico horizontal com features mais relevantes no modelo ML.
+- **Métricas do Modelo:** Tabela e gráficos de precisão, cobertura e F1-score por classe.
+- **Predição:** Previsão do status de uma nova ocorrência com base no modelo.
+- **Exportar CSV:** Download dos casos filtrados.
+- **Envio de Relatório por E-mail:** Gera PDF e envia para o endereço informado.
 
 ---
 
 ## 🔗 Endpoints da API (Backend Flask)
 
-| Endpoint                                | Método | Descrição                                 |
-|------------------------------------------|--------|--------------------------------------------|
-| `/api/casos`                            | GET    | Lista todos os casos do banco              |
-| `/api/casos`                            | POST   | Cria um novo caso (JSON)                   |
-| `/api/casos/<data_do_caso>`             | GET    | Busca um caso por data                     |
-| `/api/casos/<data_do_caso>`             | DELETE | Remove um caso por data                    |
-| `/api/modelo/coficientes`               | GET    | Retorna importância das variáveis (ML)      |
-| `/api/predizer`                         | POST   | Retorna predição do modelo para um novo caso|
+| Endpoint              | Método | Descrição                                      |
+|-----------------------|--------|------------------------------------------------|
+| `/`                   | GET    | Página inicial / verificação de status         |
+| `/login`              | POST   | Autenticação (`{usuario, senha}`)              |
+| `/casos`              | GET    | Lista todos os casos do banco                  |
+| `/casos`              | POST   | Cria um novo caso (JSON)                       |
+| `/features`           | GET    | Retorna importância das variáveis (ML)         |
+| `/predict`            | POST   | Prediz status para um novo caso                |
+| `/avaliar-modelo`     | GET    | Retorna métricas de avaliação do modelo        |
+| `/classes`            | GET    | Retorna labels legíveis das classes do modelo  |
+| `/enviar-relatorio`   | POST   | Gera PDF e envia por e-mail (`{email}`)        |
+| `/teste`              | GET    | Verifica conexão com MongoDB                   |
 
 ---
 
 ## 🧠 Machine Learning
 
-- **Modelo:** Pipeline XGBoost + OneHotEncoder (sklearn)
-- **Treinamento:** Dados lidos do MongoDB
-- **Arquivo:** `model.pkl` (mantido no backend)
-- **Endpoint:** `/api/modelo/coficientes` para feature importance, `/api/predizer` para predição
+- **Modelo:** RandomForestClassifier (scikit-learn)
+- **Features:** `tipoCrime`, `cidade`, `uf`, `hora_num`
+- **Target:** `status` (codificado via LabelEncoder)
+- **Arquivo:** `model/model.pkl`
 
 ---
 
-## 🖥️ Estrutura HTML/CSS (index.html/login.html)
+## 🛠️ Resolução de Problemas
 
-- Responsivo e simples, seguindo padrão dos slides
-- Seletor de variável dinâmica para análise (tipo, localização, etnia)
-- Inputs de data para filtro
-- Gráficos construídos com Chart.js
-- Login: admin, senha: 1234
-
----
-
-## 📈 Gráficos e Visualizações
-
-- **Gráfico Rosca:** Distribuição por variável selecionada (tipo, localização, etnia)
-- **Gráfico Barras:** Distribuição de idades das vítimas
-- **Gráfico Barras Horizontal:** Importância das features (modelo ML)
-
----
-
-## 🛠️ Dicas e Resolução de Problemas
-
-- **Erro 404 nos endpoints:** Verifique se o backend está rodando e se os caminhos estão corretos
-- **Arquivo model.pkl não encontrado:** Gere via `train_model.py` e mantenha na pasta `/backend`
-- **CORS:** Já está ativado no Flask (`CORS(app)`), mas se acessar por outro IP/porta, garanta que está liberado
-- **Conexão MongoDB Atlas:** Troque o URI no app.py caso use cloud
-- **Front-end não mostra gráficos:** Veja se a URL do backend está igual em `script.js` (`http://127.0.0.1:5000`)
-- **Reinstale dependências:**  
-  ```bash
-  pip install -r requirements.txt
-  ```
-
----
-
-## 📸 Screenshots do Funcionamento
-
-> Coloque prints do dashboard mostrando os 3 gráficos, filtros, tela inicial, etc.
-
----
-
-## 📝 Possíveis Customizações
-
-- Troque temas/cores do Chart.js conforme seu gosto
-- Adicione campos extras para novas análises no backend/ML
-- Permita exportação de dados em CSV (botão já no HTML)
-
-## 📝 Arquivos no .gitignore:
-
-# Python
-__pycache__/
-*.pyc
-
-# VS Code
-.vscode/
-
-# Dados/modelos grandes
-backend/model.pkl
-
-# Configs/env
-.env
-
-# MongoDB dump
-*.bson
-*.json
-
-# Node.js
-node_modules/
+- **`MONGO_URI não definida`**: Certifique-se de que o arquivo `backend/.env` existe e está preenchido.
+- **`model.pkl não encontrado`**: Execute `python backend/train_model_avaliado.py`.
+- **`avaliacao_modelo.json / classes_labels.json não encontrado`**: Execute `python backend/train_model_avaliado.py`.
+- **CORS**: Já configurado com `flask-cors`. Se acessar de outro IP, ajuste conforme necessário.
+- **Erro 401 no login**: Verifique `LOGIN_USER` e `LOGIN_PASS` no `.env`.

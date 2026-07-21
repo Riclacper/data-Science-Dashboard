@@ -1,18 +1,19 @@
+import os
 from pymongo import MongoClient
-from urllib.parse import quote_plus
 from random import choice, randint
 from datetime import datetime
+from dotenv import load_dotenv
 
-# Conexão com MongoDB Atlas
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://icanadareparos:ZzkSH4SSOzGSsnuc@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
+load_dotenv()
+
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError("Variável de ambiente MONGO_URI não definida.")
+
 client = MongoClient(MONGO_URI)
-
 db = client["forense"]
 colecao = db["ocorrencias"]
 
-# Dados simulados
 tipos = ["Furto", "Roubo", "Homicídio", "Agressão", "Estupro"]
 cidades = ["Recife", "Campinas", "Salvador", "Natal"]
 ufs = ["PE", "SP", "BA", "RN"]
@@ -36,4 +37,4 @@ for _ in range(40):
     })
 
 colecao.insert_many(novos)
-print("✅ 15 ocorrências com status 'Em investigação' inseridas.")
+print("✅ 40 ocorrências com status 'Em investigação' inseridas.")

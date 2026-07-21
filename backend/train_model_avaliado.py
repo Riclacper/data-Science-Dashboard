@@ -1,3 +1,5 @@
+import os
+import json
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -5,13 +7,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 import joblib
 import pymongo
-import json
-from urllib.parse import quote_plus
+from dotenv import load_dotenv
 
-# === Conexão com MongoDB Atlas ===
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://{USUARIO}:{SENHA}@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
+load_dotenv()
+
+# === Conexão com MongoDB ===
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError("Variável de ambiente MONGO_URI não definida.")
+
 client = pymongo.MongoClient(MONGO_URI)
 db = client["forense"]
 colecao = db["ocorrencias"]
@@ -66,15 +70,18 @@ relatorio = classification_report(y_test, y_pred, output_dict=True)
 print("\n📉 Matriz de Confusão:")
 print(confusion_matrix(y_test, y_pred))
 
-# === Salvar modelo e arquivos ===
-joblib.dump(modelo, "model.pkl")
+# === Caminhos de saída ===
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, '..', 'model', 'model.pkl')
 
-with open("avaliacao_modelo.json", "w", encoding="utf-8") as f:
+joblib.dump(modelo, MODEL_PATH)
+
+with open(os.path.join(BASE_DIR, "avaliacao_modelo.json"), "w", encoding="utf-8") as f:
     json.dump(relatorio, f, ensure_ascii=False, indent=2)
 
-with open("classes_labels.json", "w", encoding="utf-8") as f:
+with open(os.path.join(BASE_DIR, "classes_labels.json"), "w", encoding="utf-8") as f:
     json.dump({str(i): label for i, label in enumerate(le_status.classes_)}, f, ensure_ascii=False, indent=2)
 
 print("✅ Modelo treinado e salvo com sucesso.")
-print("📁 classes_labels.json gerado")
-print("📊 avaliacao_modelo.json salvo")
+print(f"📁 Modelo salvo em: {MODEL_PATH}")
+print("📊 avaliacao_modelo.json e classes_labels.json salvos em backend/")
