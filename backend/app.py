@@ -173,7 +173,11 @@ def enviar_relatorio():
     EMAIL_ORIGEM = os.getenv('EMAIL_ORIGEM')
     SENHA_APP = os.getenv('SENHA_APP')
     SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-    SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
+    try:
+        SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
+    except ValueError:
+        logger.error("Variável SMTP_PORT contém valor não numérico.")
+        return jsonify({"erro": "Configuração de SMTP inválida no servidor."}), 500
 
     if not EMAIL_ORIGEM or not SENHA_APP:
         logger.error("Variáveis EMAIL_ORIGEM ou SENHA_APP não configuradas.")
@@ -195,8 +199,8 @@ def enviar_relatorio():
             pdf.ln(30)
 
         pdf.set_font("Helvetica", "", 12)
-        data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-        pdf.cell(0, 10, f"Gerado em: {data}", ln=True)
+        data_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        pdf.cell(0, 10, f"Gerado em: {data_atual}", ln=True)
         pdf.ln(8)
         pdf.multi_cell(0, 10,
             "Este é um relatório automático gerado pelo sistema de predição forense.\n"
