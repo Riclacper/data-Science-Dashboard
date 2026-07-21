@@ -284,7 +284,7 @@ def enviar_relatorio():
             pdf.ln(30)
 
         pdf.set_font("Helvetica", "", 12)
-        data_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        data_atual = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
         pdf.cell(0, 10, f"Gerado em: {data_atual}", ln=True)
         pdf.ln(8)
         pdf.multi_cell(0, 10,
