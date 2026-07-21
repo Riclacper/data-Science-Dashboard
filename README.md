@@ -105,6 +105,41 @@ docker compose up --build
 
 ---
 
+## ☁️ Deploy no Render.com
+
+O projeto inclui um arquivo `render.yaml` pronto para uso via **Render Blueprint**.
+
+### Passo a passo
+
+1. **Crie os serviços no Render**
+   - Acesse [render.com](https://render.com) → *New* → *Blueprint*
+   - Conecte este repositório; o Render detectará o `render.yaml` automaticamente
+   - Dois serviços serão criados: `forense-backend` (Web Service) e `forense-frontend` (Static Site)
+
+2. **Configure as variáveis de ambiente do backend** no painel do Render:
+
+   | Variável       | Valor                                                         |
+   |----------------|---------------------------------------------------------------|
+   | `MONGO_URI`    | URI do MongoDB Atlas (ex: `mongodb+srv://...`)                |
+   | `LOGIN_USER`   | Usuário de acesso ao dashboard                                |
+   | `LOGIN_PASS`   | Senha de acesso ao dashboard                                  |
+   | `SECRET_KEY`   | Gerado automaticamente pelo Render                            |
+   | `EMAIL_ORIGEM` | E-mail para envio de relatórios                               |
+   | `SENHA_APP`    | Senha de App do Gmail (16 caracteres)                         |
+
+3. **Aguarde o primeiro deploy do backend** e copie a URL gerada (ex: `https://forense-backend.onrender.com`)
+
+4. **Atualize o frontend** — edite `frontend/config.js` e substitua a URL local pela URL do backend:
+   ```js
+   const API = window.API_URL || 'https://forense-backend.onrender.com';
+   ```
+
+5. **Faça push** para o repositório; o Render fará o redeploy automático do frontend
+
+> ⚠️ **Plano gratuito**: o serviço pode entrar em *sleep* após inatividade. O primeiro acesso após um período ocioso pode levar ~30 segundos.
+
+---
+
 ## 🧪 Testes
 
 ```bash
