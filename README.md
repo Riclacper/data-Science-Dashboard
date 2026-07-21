@@ -62,6 +62,7 @@ Edite `backend/.env`:
 MONGO_URI=mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/forense?retryWrites=true&w=majority
 LOGIN_USER=admin
 LOGIN_PASS=minha_senha_segura
+SECRET_KEY=gere_uma_chave_aleatoria_longa_aqui
 EMAIL_ORIGEM=seuemail@gmail.com
 SENHA_APP=senha_de_app_gmail
 FLASK_ENV=development
@@ -92,6 +93,26 @@ cd frontend
 python3 -m http.server 8000
 ```
 Abra o navegador em [http://localhost:8000/login.html](http://localhost:8000/login.html).
+
+### 🐳 Alternativa: Rodar com Docker
+
+```bash
+cp backend/.env.example backend/.env  # preencha as variáveis
+docker compose up --build
+```
+- Backend em [http://localhost:5000](http://localhost:5000)
+- Frontend em [http://localhost:8000](http://localhost:8000)
+
+---
+
+## 🧪 Testes
+
+```bash
+pip install -r backend/requirements.txt
+pytest --tb=short -q
+```
+
+Os testes usam mocks para MongoDB e o modelo ML — nenhuma conexão real necessária.
 
 ---
 

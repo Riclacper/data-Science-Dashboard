@@ -73,9 +73,8 @@
     <p id="erroLogin"></p>
   </div>
 
+  <script src="config.js"></script>
   <script>
-    const API = 'http://127.0.0.1:5000';
-
     async function fazerLogin() {
       const usuario = document.getElementById('usuario').value;
       const senha = document.getElementById('senha').value;
@@ -92,6 +91,7 @@
 
         if (data.ok) {
           localStorage.setItem('usuario_logado', 'true');
+          localStorage.setItem('api_token', data.token);
           window.location.href = 'index.html';
         } else {
           erroEl.textContent = data.erro || 'Usuário ou senha incorretos.';

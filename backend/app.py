@@ -1,9 +1,12 @@
 import os
 import json
+import hmac
+import hashlib
 import logging
 import datetime
 import smtplib
 from email.message import EmailMessage
+from functools import wraps
 
 import joblib
 import pandas as pd
@@ -48,6 +51,38 @@ le_tipoCrime = LabelEncoder().fit(df_enc["tipoCrime"])
 le_cidade = LabelEncoder().fit(df_enc["cidade"])
 le_uf = LabelEncoder().fit(df_enc["uf"])
 
+# === Chave secreta para tokens de sessão ===
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+
+
+def _gerar_token(usuario: str) -> str:
+    """Gera um token HMAC-SHA256 simples para a sessão."""
+    payload = f"{usuario}:{datetime.date.today().isoformat()}"
+    return hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+
+
+def requer_autenticacao(f):
+    """Decorator: exige cabeçalho Authorization: ******"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not SECRET_KEY:
+            logger.error("Variável SECRET_KEY não configurada.")
+            return jsonify({"erro": "Autenticação não configurada no servidor."}), 500
+
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return jsonify({"erro": "Token de autenticação ausente."}), 401
+
+        token_recebido = auth.split(" ", 1)[1]
+        LOGIN_USER = os.getenv("LOGIN_USER", "")
+        token_esperado = _gerar_token(LOGIN_USER)
+
+        if not hmac.compare_digest(token_recebido, token_esperado):
+            return jsonify({"erro": "Token inválido ou expirado."}), 401
+
+        return f(*args, **kwargs)
+    return decorated
+
 
 # === ROTA: Página inicial ===
 @app.route('/')
@@ -58,7 +93,10 @@ def home():
 # === ROTA: Login ===
 @app.route('/login', methods=['POST'])
 def login():
-    dados = request.get_json()
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Corpo da requisição inválido ou ausente."}), 400
+
     usuario = dados.get('usuario', '')
     senha = dados.get('senha', '')
 
@@ -69,28 +107,61 @@ def login():
         logger.error("Variáveis LOGIN_USER ou LOGIN_PASS não configuradas.")
         return jsonify({"erro": "Credenciais de login não configuradas no servidor."}), 500
 
+    if not SECRET_KEY:
+        logger.error("Variável SECRET_KEY não configurada.")
+        return jsonify({"erro": "Autenticação não configurada no servidor."}), 500
+
     if usuario == LOGIN_USER and senha == LOGIN_PASS:
-        return jsonify({"ok": True})
+        token = _gerar_token(usuario)
+        return jsonify({"ok": True, "token": token})
     return jsonify({"ok": False, "erro": "Usuário ou senha incorretos."}), 401
 
 
-# === ROTA: Retorna todos os casos ===
+CAMPOS_OBRIGATORIOS_CASO = ["tipoCrime", "status", "data", "hora", "cidade", "uf"]
+
+
+# === ROTA: Retorna casos com paginação ===
 @app.route('/casos', methods=['GET'])
+@requer_autenticacao
 def listar():
-    casos = list(colecao.find({}, {'_id': 0}))
-    return jsonify(casos)
+    try:
+        pagina = max(1, int(request.args.get('pagina', 1)))
+        limite = min(200, max(1, int(request.args.get('limite', 100))))
+    except ValueError:
+        return jsonify({"erro": "Parâmetros 'pagina' e 'limite' devem ser números inteiros."}), 400
+
+    skip = (pagina - 1) * limite
+    total = colecao.count_documents({})
+    casos = list(colecao.find({}, {'_id': 0}).skip(skip).limit(limite))
+
+    return jsonify({
+        "total": total,
+        "pagina": pagina,
+        "limite": limite,
+        "paginas": -(-total // limite),  # ceil sem math
+        "dados": casos
+    })
 
 
 # === ROTA: Insere novo caso ===
 @app.route('/casos', methods=['POST'])
+@requer_autenticacao
 def inserir():
-    novo = request.get_json()
+    novo = request.get_json(silent=True)
+    if not novo:
+        return jsonify({"erro": "Corpo da requisição inválido ou ausente."}), 400
+
+    faltando = [c for c in CAMPOS_OBRIGATORIOS_CASO if not novo.get(c)]
+    if faltando:
+        return jsonify({"erro": f"Campos obrigatórios ausentes: {', '.join(faltando)}"}), 422
+
     colecao.insert_one(novo)
-    return jsonify({'msg': 'inserido com sucesso'})
+    return jsonify({'msg': 'inserido com sucesso'}), 201
 
 
 # === ROTA: Importância das variáveis ===
 @app.route('/features', methods=['GET'])
+@requer_autenticacao
 def importancia_variaveis():
     features = ["tipoCrime", "cidade", "uf", "hora_num"]
     importancias = model.feature_importances_
@@ -100,10 +171,21 @@ def importancia_variaveis():
     })
 
 
+CAMPOS_OBRIGATORIOS_PREDICT = ["tipoCrime", "cidade", "uf", "hora"]
+
+
 # === ROTA: Predição de status ===
 @app.route('/predict', methods=['POST'])
+@requer_autenticacao
 def predizer_status():
-    dados = request.get_json()
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Corpo da requisição inválido ou ausente."}), 400
+
+    faltando = [c for c in CAMPOS_OBRIGATORIOS_PREDICT if not dados.get(c)]
+    if faltando:
+        return jsonify({"erro": f"Campos obrigatórios ausentes: {', '.join(faltando)}"}), 422
+
     try:
         tipoCrime = le_tipoCrime.transform([dados['tipoCrime']])[0]
         cidade = le_cidade.transform([dados['cidade']])[0]
@@ -136,6 +218,7 @@ def teste():
 
 # === ROTA: Avaliação do modelo ===
 @app.route('/avaliar-modelo', methods=['GET'])
+@requer_autenticacao
 def avaliar_modelo():
     try:
         avaliacao_path = os.path.join(BASE_DIR, 'avaliacao_modelo.json')
@@ -153,6 +236,7 @@ def avaliar_modelo():
 
 # === ROTA: Labels legíveis das classes ===
 @app.route('/classes', methods=['GET'])
+@requer_autenticacao
 def classes():
     try:
         labels_path = os.path.join(BASE_DIR, 'classes_labels.json')
@@ -166,8 +250,9 @@ def classes():
 
 # === ROTA: Enviar relatório por e-mail ===
 @app.route('/enviar-relatorio', methods=['POST'])
+@requer_autenticacao
 def enviar_relatorio():
-    dados = request.get_json()
+    dados = request.get_json(silent=True)
     email_destino = dados.get('email', '')
 
     EMAIL_ORIGEM = os.getenv('EMAIL_ORIGEM')

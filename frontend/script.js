@@ -1,8 +1,33 @@
-const API = 'http://127.0.0.1:5000';
+// API URL is defined in config.js (loaded before this script)
+
+function authHeaders(extra) {
+  const token = localStorage.getItem('api_token') || '';
+  return Object.assign({ 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, extra);
+}
+
+async function apiFetch(url, options) {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    localStorage.removeItem('usuario_logado');
+    localStorage.removeItem('api_token');
+    window.location.href = 'login.html';
+    return null;
+  }
+  return res;
+}
+
+// Busca todos os casos respeitando a paginação da API
+async function buscarTodosCasos() {
+  const res = await apiFetch(`${API}/casos?limite=200`, {
+    headers: authHeaders()
+  });
+  if (!res) return [];
+  const json = await res.json();
+  return Array.isArray(json) ? json : (json.dados || []);
+}
 
 async function carregarCasos() {
-  const res = await fetch(`${API}/casos`);
-  const dados = await res.json();
+  const dados = await buscarTodosCasos();
 
   const filtro = document.getElementById("filtro").value;
   const filtrados = filtro ? dados.filter(c => c.tipoCrime === filtro) : dados;
@@ -64,8 +89,7 @@ async function carregarCasos() {
 }
 
 async function preencherFiltroTipos() {
-  const res = await fetch(`${API}/casos`);
-  const dados = await res.json();
+  const dados = await buscarTodosCasos();
   const tiposUnicos = [...new Set(dados.map(c => c.tipoCrime))].sort();
 
   const select = document.getElementById("filtro");
@@ -80,7 +104,8 @@ async function preencherFiltroTipos() {
 }
 
 async function carregarFeatures() {
-  const res = await fetch(`${API}/features`);
+  const res = await apiFetch(`${API}/features`, { headers: authHeaders() });
+  if (!res) return;
   const dados = await res.json();
 
   const labelsLegiveis = dados.features.map(f => {
@@ -142,11 +167,12 @@ async function predizer() {
   const uf = document.getElementById('uf').value;
   const hora = document.getElementById('hora').value;
 
-  const r = await fetch(`${API}/predict`, {
+  const r = await apiFetch(`${API}/predict`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: authHeaders(),
     body: JSON.stringify({ tipoCrime, cidade, uf, hora })
   });
+  if (!r) return;
 
   const res = await r.json();
   document.getElementById('resposta').innerText =
@@ -155,11 +181,10 @@ async function predizer() {
 
 
 function exportarCSV() {
-  fetch(`${API}/casos`)
-    .then(response => response.json())
+  buscarTodosCasos()
     .then(dados => {
       const filtro = document.getElementById("filtro").value;
-      const filtrados = filtro ? dados.filter(c => c.natureza === filtro) : dados;
+      const filtrados = filtro ? dados.filter(c => c.tipoCrime === filtro) : dados;
 
       if (filtrados.length === 0) {
         alert("Nenhum dado disponível para exportar.");
@@ -185,14 +210,17 @@ function exportarCSV() {
 
 function logout() {
   localStorage.removeItem('usuario_logado');
+  localStorage.removeItem('api_token');
   window.location.href = 'login.html';
 }
 
 async function carregarAvaliacao() {
+  const opts = { headers: authHeaders() };
   const [avaliacaoRes, classesRes] = await Promise.all([
-    fetch(`${API}/avaliar-modelo`),
-    fetch(`${API}/classes`)
+    apiFetch(`${API}/avaliar-modelo`, opts),
+    apiFetch(`${API}/classes`, opts)
   ]);
+  if (!avaliacaoRes || !classesRes) return;
 
   const data = await avaliacaoRes.json();
   const classeLabels = await classesRes.json();
@@ -233,10 +261,12 @@ async function carregarAvaliacao() {
 
 
 async function graficoMetricasModelo() {
+  const opts = { headers: authHeaders() };
   const [avaliacaoRes, classesRes] = await Promise.all([
-    fetch(`${API}/avaliar-modelo`),
-    fetch(`${API}/classes`)
+    apiFetch(`${API}/avaliar-modelo`, opts),
+    apiFetch(`${API}/classes`, opts)
   ]);
+  if (!avaliacaoRes || !classesRes) return;
 
   const data = await avaliacaoRes.json();
   const classeLabels = await classesRes.json();
@@ -312,10 +342,12 @@ async function graficoMetricasModelo() {
 
 
 async function graficoRadarMetricas() {
+  const opts = { headers: authHeaders() };
   const [avaliacaoRes, classesRes] = await Promise.all([
-    fetch(`${API}/avaliar-modelo`),
-    fetch(`${API}/classes`)
+    apiFetch(`${API}/avaliar-modelo`, opts),
+    apiFetch(`${API}/classes`, opts)
   ]);
+  if (!avaliacaoRes || !classesRes) return;
 
   const data = await avaliacaoRes.json();
   const classeLabels = await classesRes.json();
@@ -403,11 +435,12 @@ async function enviarRelatorio() {
     return;
   }
 
-  const res = await fetch(`${API}/enviar-relatorio`, {
+  const res = await apiFetch(`${API}/enviar-relatorio`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ email })
   });
+  if (!res) return;
 
   const resultado = await res.json();
   document.getElementById("statusEnvio").innerText = resultado.msg || resultado.erro;
