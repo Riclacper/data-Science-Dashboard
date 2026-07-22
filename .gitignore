@@ -1,19 +1,25 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.db
+.venv/
+venv/
 
 # VS Code
 .vscode/
 
-# Dados/modelos grandes
+# Artefatos gerados de Machine Learning
 backend/model.pkl
+backend/avaliacao_modelo.json
 
-# Configs/env
+# Configurações e segredos
 .env
+.env.*
+!.env.example
 
-# MongoDB dump
+# Dumps e dados locais
 *.bson
-*.json
+*.csv
 
 # Node.js
 node_modules/

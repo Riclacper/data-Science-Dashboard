@@ -1,127 +1,211 @@
-print(">>>>> APP INICIADO: backend/app.py usado com sucesso")
+from datetime import date, time
+from typing import Any
 
+import joblib
+import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from pymongo import MongoClient
-from urllib.parse import quote_plus
-import joblib
-import os
-import pandas as pd
-import json
+from sqlalchemy import select
 
-app = Flask(__name__)
-CORS(app)
+from config import CORS_ORIGINS, EVALUATION_PATH, FLASK_DEBUG, MODEL_PATH
+from database import SessionLocal, init_db
+from models import Ocorrencia
 
-# === Conexão MongoDB Atlas ===
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://icanadareparos:ZzkSH4SSOzGSsnuc@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
-client = MongoClient(MONGO_URI)
-db = client["forense"]
-colecao = db["ocorrencias"]
-
-# === Carrega o modelo de ML ===
-model_path = 'model.pkl'
-model = joblib.load(model_path)
-
-# === Recriar codificadores com base nos dados reais ===
-dados = list(colecao.find({}, {"tipoCrime": 1, "cidade": 1, "uf": 1, "_id": 0}))
-df = pd.DataFrame(dados)
-
-from sklearn.preprocessing import LabelEncoder
-le_tipoCrime = LabelEncoder().fit(df["tipoCrime"])
-le_cidade = LabelEncoder().fit(df["cidade"])
-le_uf = LabelEncoder().fit(df["uf"])
+REQUIRED_FIELDS = {"tipoCrime", "status", "cidade", "uf", "hora"}
+FEATURES = ["tipoCrime", "cidade", "uf", "hora_num"]
 
 
-# === ROTA: Página inicial ===
-@app.route('/')
-def home():
-    return "API de análise de casos conectada ao Atlas"
+def load_model_artifact() -> dict[str, Any] | None:
+    if not MODEL_PATH.exists():
+        return None
+    artifact = joblib.load(MODEL_PATH)
+    if not isinstance(artifact, dict) or "pipeline" not in artifact or "label_encoder" not in artifact:
+        raise RuntimeError("model.pkl incompatível. Execute train_model_avaliado.py novamente.")
+    return artifact
 
 
-# === ROTA: Retorna todos os casos ===
-@app.route('/casos', methods=['GET'])
-def listar():
-    print(">>> /casos foi chamado!")
-    casos = list(colecao.find({}, {'_id': 0}))
-    return jsonify(casos)
+def parse_date(value: Any) -> date | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value))
 
 
-# === ROTA: Insere novo caso ===
-@app.route('/casos', methods=['POST'])
-def inserir():
-    novo = request.get_json()
-    colecao.insert_one(novo)
-    return jsonify({'msg': 'inserido com sucesso'})
+def parse_time(value: Any) -> time | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, time):
+        return value
+    return time.fromisoformat(str(value))
 
 
-# === ROTA: Importância das variáveis ===
-@app.route('/features', methods=['GET'])
-def importancia_variaveis():
-    features = ["tipoCrime", "cidade", "uf", "hora_num"]
-    importancias = model.feature_importances_
-    return jsonify({
-        "features": features,
-        "importances": importancias.tolist()
-    })
+def payload_to_ocorrencia(payload: dict[str, Any]) -> Ocorrencia:
+    missing = sorted(field for field in REQUIRED_FIELDS if payload.get(field) in (None, ""))
+    if missing:
+        raise ValueError(f"Campos obrigatórios ausentes: {', '.join(missing)}")
+
+    uf = str(payload["uf"]).strip().upper()
+    if len(uf) != 2:
+        raise ValueError("O campo uf deve conter exatamente duas letras.")
+
+    fotos = payload.get("fotos", [])
+    anexos = payload.get("anexos", [])
+    if not isinstance(fotos, list) or not isinstance(anexos, list):
+        raise ValueError("Os campos fotos e anexos devem ser listas.")
+
+    return Ocorrencia(
+        tipo_crime=str(payload["tipoCrime"]).strip(),
+        status=str(payload["status"]).strip(),
+        data=parse_date(payload.get("data")),
+        hora=parse_time(payload["hora"]),
+        descricao=payload.get("descricao"),
+        nome_vitima=payload.get("nomeVitima"),
+        local=payload.get("local"),
+        cidade=str(payload["cidade"]).strip(),
+        uf=uf,
+        coordenadas=payload.get("coordenadas"),
+        perito=payload.get("perito"),
+        fotos=fotos,
+        anexos=anexos,
+    )
 
 
-# === ROTA: Predição de status ===
-@app.route('/predict', methods=['POST'])
-def predizer_status():
-    dados = request.get_json()
+def aggregate_feature_importances(artifact: dict[str, Any]) -> list[float]:
+    pipeline = artifact["pipeline"]
+    classifier = pipeline.named_steps["classifier"]
+    preprocessor = pipeline.named_steps["preprocessor"]
+    transformed_names = preprocessor.get_feature_names_out()
+
+    totals = {feature: 0.0 for feature in FEATURES}
+    for transformed_name, importance in zip(transformed_names, classifier.feature_importances_):
+        if "tipoCrime_" in transformed_name:
+            totals["tipoCrime"] += float(importance)
+        elif "cidade_" in transformed_name:
+            totals["cidade"] += float(importance)
+        elif "uf_" in transformed_name:
+            totals["uf"] += float(importance)
+        elif transformed_name.endswith("hora_num"):
+            totals["hora_num"] += float(importance)
+
+    return [totals[feature] for feature in FEATURES]
+
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": CORS_ORIGINS}})
+    init_db()
+
     try:
-        tipoCrime = le_tipoCrime.transform([dados['tipoCrime']])[0]
-        cidade = le_cidade.transform([dados['cidade']])[0]
-        uf = le_uf.transform([dados['uf']])[0]
-        hora_num = int(dados['hora'].split(":")[0])
+        model_artifact = load_model_artifact()
+    except Exception as exc:
+        model_artifact = None
+        app.logger.error("Falha ao carregar o modelo: %s", exc)
 
-        entrada = pd.DataFrame([[tipoCrime, cidade, uf, hora_num]],
-                               columns=['tipoCrime', 'cidade', 'uf', 'hora_num'])
+    @app.get("/")
+    def home():
+        return jsonify(
+            {
+                "api": "Dashboard Forense",
+                "database": "PostgreSQL/Supabase",
+                "modelo_disponivel": model_artifact is not None,
+            }
+        )
 
-        pred_index = model.predict(entrada)[0]
+    @app.get("/casos")
+    def listar_casos():
+        with SessionLocal() as session:
+            casos = session.scalars(select(Ocorrencia).order_by(Ocorrencia.id.desc())).all()
+            return jsonify([caso.to_dict() for caso in casos])
 
-        with open("classes_labels.json", encoding="utf-8") as f:
-            labels = json.load(f)
+    @app.post("/casos")
+    def inserir_caso():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"erro": "Envie um objeto JSON válido."}), 400
 
-        label = labels.get(str(pred_index), str(pred_index))
-        return jsonify({"previsao_status": label})
+        try:
+            ocorrencia = payload_to_ocorrencia(payload)
+            with SessionLocal() as session:
+                session.add(ocorrencia)
+                session.commit()
+                session.refresh(ocorrencia)
+            return jsonify({"msg": "inserido com sucesso", "caso": ocorrencia.to_dict()}), 201
+        except ValueError as exc:
+            return jsonify({"erro": str(exc)}), 400
+        except Exception:
+            app.logger.exception("Falha ao inserir ocorrência")
+            return jsonify({"erro": "Não foi possível inserir a ocorrência."}), 500
 
-    except Exception as e:
-        return jsonify({"erro": str(e)})
+    @app.get("/features")
+    def importancia_variaveis():
+        if model_artifact is None:
+            return jsonify({"erro": "Modelo indisponível. Execute train_model_avaliado.py."}), 503
+        return jsonify(
+            {
+                "features": FEATURES,
+                "importances": aggregate_feature_importances(model_artifact),
+            }
+        )
+
+    @app.post("/predict")
+    def predizer_status():
+        if model_artifact is None:
+            return jsonify({"erro": "Modelo indisponível. Execute train_model_avaliado.py."}), 503
+
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"erro": "Envie um objeto JSON válido."}), 400
+
+        required = ["tipoCrime", "cidade", "uf", "hora"]
+        missing = [field for field in required if payload.get(field) in (None, "")]
+        if missing:
+            return jsonify({"erro": f"Campos obrigatórios ausentes: {', '.join(missing)}"}), 400
+
+        try:
+            hora_num = int(str(payload["hora"]).split(":", maxsplit=1)[0])
+            entrada = pd.DataFrame(
+                [
+                    {
+                        "tipoCrime": str(payload["tipoCrime"]),
+                        "cidade": str(payload["cidade"]),
+                        "uf": str(payload["uf"]).upper(),
+                        "hora_num": hora_num,
+                    }
+                ]
+            )
+            pred_index = model_artifact["pipeline"].predict(entrada)[0]
+            label = model_artifact["label_encoder"].inverse_transform([int(pred_index)])[0]
+            return jsonify({"previsao_status": str(label)})
+        except (TypeError, ValueError, KeyError) as exc:
+            return jsonify({"erro": f"Dados de predição inválidos: {exc}"}), 400
+        except Exception:
+            app.logger.exception("Falha na predição")
+            return jsonify({"erro": "Não foi possível realizar a predição."}), 500
+
+    @app.get("/teste")
+    def teste_conexao():
+        with SessionLocal() as session:
+            primeiro = session.scalars(select(Ocorrencia).limit(1)).first()
+            return jsonify(primeiro.to_dict() if primeiro else {"mensagem": "tabela vazia"})
+
+    @app.get("/avaliar-modelo")
+    def avaliar_modelo():
+        if not EVALUATION_PATH.exists():
+            return jsonify({"erro": "avaliacao_modelo.json não encontrado"}), 404
+        return app.response_class(EVALUATION_PATH.read_text(encoding="utf-8"), mimetype="application/json")
+
+    @app.get("/classes")
+    def classes():
+        if model_artifact is None:
+            return jsonify({"erro": "Modelo indisponível. Execute train_model_avaliado.py."}), 503
+        labels = model_artifact["label_encoder"].classes_
+        return jsonify({str(index): str(label) for index, label in enumerate(labels)})
+
+    return app
 
 
-# === ROTA: Teste simples de conexão ===
-@app.route('/teste')
-def teste():
-    print(">>> Endpoint /teste acessado!")
-    doc = colecao.find_one({}, {'_id': 0})
-    return jsonify(doc if doc else {"erro": "colecao vazia"})
+app = create_app()
 
-
-# === ROTA: Avaliação do modelo ===
-@app.route('/avaliar-modelo', methods=['GET'])
-def avaliar_modelo():
-    try:
-        with open("avaliacao_modelo.json", "r", encoding="utf-8") as f:
-            avaliacao = json.load(f)
-        return jsonify(avaliacao)
-    except Exception as e:
-        return jsonify({"erro": str(e)})
-
-
-
-# === ROTA: Labels legíveis das classes ===
-@app.route('/classes', methods=['GET'])
-def classes():
-    try:
-        with open("classes_labels.json", "r", encoding="utf-8") as f:
-            return jsonify(json.load(f))
-    except FileNotFoundError:
-        return jsonify({"erro": "Arquivo classes_labels.json não encontrado"}), 404
-
-
-# === INICIAR SERVIDOR ===
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=FLASK_DEBUG)
