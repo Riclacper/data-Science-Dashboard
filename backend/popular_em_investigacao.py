@@ -1,39 +1,39 @@
-from pymongo import MongoClient
-from urllib.parse import quote_plus
+from datetime import date, time
 from random import choice, randint
-from datetime import datetime
 
-# Conexão com MongoDB Atlas
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://icanadareparos:ZzkSH4SSOzGSsnuc@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
-client = MongoClient(MONGO_URI)
+from database import SessionLocal, init_db
+from models import Ocorrencia
 
-db = client["forense"]
-colecao = db["ocorrencias"]
+TIPOS = ["Furto", "Roubo", "Homicídio", "Agressão", "Estupro"]
+CIDADES = ["Recife", "Campinas", "Salvador", "Natal"]
+UFS = ["PE", "SP", "BA", "RN"]
 
-# Dados simulados
-tipos = ["Furto", "Roubo", "Homicídio", "Agressão", "Estupro"]
-cidades = ["Recife", "Campinas", "Salvador", "Natal"]
-ufs = ["PE", "SP", "BA", "RN"]
 
-novos = []
-for _ in range(40):
-    novos.append({
-        "tipoCrime": choice(tipos),
-        "status": "Em investigação",
-        "data": datetime.today().strftime("%Y-%m-%d"),
-        "hora": f"{randint(0, 23):02d}:{randint(0, 59):02d}",
-        "descricao": "Inserido automaticamente para representar 'Em investigação'",
-        "nomeVitima": "Fulano de Tal",
-        "local": "Rua Exemplo",
-        "cidade": choice(cidades),
-        "uf": choice(ufs),
-        "coordenadas": "",
-        "perito": "Dr. Simulado",
-        "fotos": [],
-        "anexos": []
-    })
+def criar_ocorrencia() -> Ocorrencia:
+    return Ocorrencia(
+        tipo_crime=choice(TIPOS),
+        status="Em investigação",
+        data=date.today(),
+        hora=time(randint(0, 23), randint(0, 59)),
+        descricao="Inserido automaticamente para representar 'Em investigação'",
+        nome_vitima="Fulano de Tal",
+        local="Rua Exemplo",
+        cidade=choice(CIDADES),
+        uf=choice(UFS),
+        coordenadas="",
+        perito="Dr. Simulado",
+        fotos=[],
+        anexos=[],
+    )
 
-colecao.insert_many(novos)
-print("✅ 15 ocorrências com status 'Em investigação' inseridas.")
+
+def popular(quantidade: int = 40) -> None:
+    init_db()
+    with SessionLocal() as session:
+        session.add_all(criar_ocorrencia() for _ in range(quantidade))
+        session.commit()
+    print(f"{quantidade} ocorrências com status 'Em investigação' inseridas.")
+
+
+if __name__ == "__main__":
+    popular()
