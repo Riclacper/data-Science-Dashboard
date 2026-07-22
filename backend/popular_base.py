@@ -1,41 +1,40 @@
-from pymongo import MongoClient
+from datetime import date, time
 from random import choice, randint
-from datetime import datetime
-from urllib.parse import quote_plus
 
-# Conexão com Atlas
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://{USUARIO}:{SENHA}@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
-client = MongoClient(MONGO_URI)
+from database import SessionLocal, init_db
+from models import Ocorrencia
 
-db = client["forense"]
-colecao = db["ocorrencias"]
+TIPOS = ["Homicídio", "Furto", "Roubo", "Agressão", "Estupro"]
+STATUS = ["Em análise", "Concluído", "Arquivado", "Em investigação"]
+UFS = ["PE", "SP", "RJ", "BA"]
+CIDADES = ["Recife", "Olinda", "Salvador", "Campinas", "Rio de Janeiro"]
 
-# Dados simulados
-tipos = ["Homicídio", "Furto", "Roubo", "Agressão", "Estupro"]
-status_options = ["Em análise", "Concluído", "Arquivado", "Em investigação"]
-ufs = ["PE", "SP", "RJ", "BA"]
-cidades = ["Recife", "Olinda", "Salvador", "Campinas", "Rio de Janeiro"]
 
-novos = []
-for _ in range(100): 
-    doc = {
-        "tipoCrime": choice(tipos),
-        "status": choice(status_options),
-        "data": "2024-06-17",
-        "hora": f"{randint(0,23):02d}:{randint(0,59):02d}",
-        "descricao": "Simulação de ocorrência",
-        "nomeVitima": "Fulano de Tal",
-        "local": "Rua Exemplo",
-        "cidade": choice(cidades),
-        "uf": choice(ufs),
-        "coordenadas": "",
-        "perito": "Dr. Simulado",
-        "fotos": [],
-        "anexos": []
-    }
-    novos.append(doc)
+def criar_ocorrencia() -> Ocorrencia:
+    return Ocorrencia(
+        tipo_crime=choice(TIPOS),
+        status=choice(STATUS),
+        data=date(2024, 6, 17),
+        hora=time(randint(0, 23), randint(0, 59)),
+        descricao="Simulação de ocorrência",
+        nome_vitima="Fulano de Tal",
+        local="Rua Exemplo",
+        cidade=choice(CIDADES),
+        uf=choice(UFS),
+        coordenadas="",
+        perito="Dr. Simulado",
+        fotos=[],
+        anexos=[],
+    )
 
-colecao.insert_many(novos)
-print("✅ 100 ocorrências simuladas inseridas!")
+
+def popular(quantidade: int = 100) -> None:
+    init_db()
+    with SessionLocal() as session:
+        session.add_all(criar_ocorrencia() for _ in range(quantidade))
+        session.commit()
+    print(f"{quantidade} ocorrências simuladas inseridas.")
+
+
+if __name__ == "__main__":
+    popular()
