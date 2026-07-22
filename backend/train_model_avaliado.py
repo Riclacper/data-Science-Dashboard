@@ -1,80 +1,133 @@
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
-import joblib
-import pymongo
 import json
-from urllib.parse import quote_plus
 
-# === Conexão com MongoDB Atlas ===
-USUARIO = quote_plus("icanadareparos")
-SENHA = quote_plus("ZzkSH4SSOzGSsnuc")
-MONGO_URI = f"mongodb+srv://{USUARIO}:{SENHA}@dentalbase.hppnmdq.mongodb.net/forense?retryWrites=true&w=majority&appName=DentalBase"
-client = pymongo.MongoClient(MONGO_URI)
-db = client["forense"]
-colecao = db["ocorrencias"]
+import joblib
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sqlalchemy import select
 
-# === Buscar dados da coleção ===
-dados = list(colecao.find({}, {
-    "_id": 0,
-    "tipoCrime": 1,
-    "cidade": 1,
-    "uf": 1,
-    "hora": 1,
-    "status": 1
-}))
-df = pd.DataFrame(dados)
+from config import EVALUATION_PATH, MODEL_PATH
+from database import SessionLocal
+from models import Ocorrencia
 
-# === Pré-processamento ===
-df.dropna(subset=["tipoCrime", "cidade", "uf", "hora", "status"], inplace=True)
-df["hora_num"] = pd.to_numeric(df["hora"].str.extract(r"(\d+):")[0], errors="coerce")
-df.dropna(subset=["hora_num"], inplace=True)
+CATEGORICAL_FEATURES = ["tipoCrime", "cidade", "uf"]
+NUMERIC_FEATURES = ["hora_num"]
+REQUIRED_COLUMNS = CATEGORICAL_FEATURES + ["hora", "status"]
 
-# === Codificação ===
-le_tipoCrime = LabelEncoder()
-df["tipoCrime"] = le_tipoCrime.fit_transform(df["tipoCrime"])
 
-le_cidade = LabelEncoder()
-df["cidade"] = le_cidade.fit_transform(df["cidade"])
+def carregar_dados() -> pd.DataFrame:
+    with SessionLocal() as session:
+        rows = session.execute(
+            select(
+                Ocorrencia.tipo_crime,
+                Ocorrencia.cidade,
+                Ocorrencia.uf,
+                Ocorrencia.hora,
+                Ocorrencia.status,
+            )
+        ).all()
 
-le_uf = LabelEncoder()
-df["uf"] = le_uf.fit_transform(df["uf"])
+    return pd.DataFrame(
+        rows,
+        columns=["tipoCrime", "cidade", "uf", "hora", "status"],
+    )
 
-le_status = LabelEncoder()
-df["status_encoded"] = le_status.fit_transform(df["status"])
 
-print("📊 Distribuição original das classes:")
-print(df["status_encoded"].value_counts())
+def preparar_dados(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        raise RuntimeError("A tabela ocorrencias está vazia. Popule o banco antes de treinar.")
 
-# === Divisão e treino ===
-X = df[["tipoCrime", "cidade", "uf", "hora_num"]]
-y = df["status_encoded"]
+    df = df.dropna(subset=REQUIRED_COLUMNS).copy()
+    df["hora_num"] = df["hora"].apply(lambda value: value.hour if hasattr(value, "hour") else None)
+    df = df.dropna(subset=["hora_num"])
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
-)
+    if len(df) < 10:
+        raise RuntimeError("São necessários pelo menos 10 registros válidos para o treinamento.")
+    if df["status"].nunique() < 2:
+        raise RuntimeError("São necessárias pelo menos duas classes de status.")
 
-modelo = RandomForestClassifier(random_state=42)
-modelo.fit(X_train, y_train)
+    return df
 
-# === Avaliação ===
-y_pred = modelo.predict(X_test)
-relatorio = classification_report(y_test, y_pred, output_dict=True)
 
-print("\n📉 Matriz de Confusão:")
-print(confusion_matrix(y_test, y_pred))
+def treinar() -> None:
+    df = preparar_dados(carregar_dados())
 
-# === Salvar modelo e arquivos ===
-joblib.dump(modelo, "model.pkl")
+    label_encoder = LabelEncoder()
+    y = label_encoder.fit_transform(df["status"])
+    X = df[CATEGORICAL_FEATURES + NUMERIC_FEATURES]
 
-with open("avaliacao_modelo.json", "w", encoding="utf-8") as f:
-    json.dump(relatorio, f, ensure_ascii=False, indent=2)
+    class_counts = pd.Series(y).value_counts()
+    stratify = y if class_counts.min() >= 2 else None
 
-with open("classes_labels.json", "w", encoding="utf-8") as f:
-    json.dump({str(i): label for i, label in enumerate(le_status.classes_)}, f, ensure_ascii=False, indent=2)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        stratify=stratify,
+        random_state=42,
+    )
 
-print("✅ Modelo treinado e salvo com sucesso.")
-print("📁 classes_labels.json gerado")
-print("📊 avaliacao_modelo.json salvo")
+    preprocessor = ColumnTransformer(
+        transformers=[
+            (
+                "categorical",
+                OneHotEncoder(handle_unknown="ignore", sparse_output=False),
+                CATEGORICAL_FEATURES,
+            ),
+            ("numeric", "passthrough", NUMERIC_FEATURES),
+        ]
+    )
+
+    pipeline = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            (
+                "classifier",
+                RandomForestClassifier(
+                    n_estimators=300,
+                    random_state=42,
+                    class_weight="balanced",
+                ),
+            ),
+        ]
+    )
+
+    pipeline.fit(X_train, y_train)
+    y_pred = pipeline.predict(X_test)
+
+    report = classification_report(
+        y_test,
+        y_pred,
+        labels=list(range(len(label_encoder.classes_))),
+        target_names=[str(label) for label in label_encoder.classes_],
+        output_dict=True,
+        zero_division=0,
+    )
+    report["confusion_matrix"] = confusion_matrix(
+        y_test,
+        y_pred,
+        labels=list(range(len(label_encoder.classes_))),
+    ).tolist()
+
+    artifact = {
+        "pipeline": pipeline,
+        "label_encoder": label_encoder,
+        "features": CATEGORICAL_FEATURES + NUMERIC_FEATURES,
+    }
+
+    joblib.dump(artifact, MODEL_PATH)
+    EVALUATION_PATH.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    print(f"Modelo salvo em: {MODEL_PATH}")
+    print(f"Avaliação salva em: {EVALUATION_PATH}")
+
+
+if __name__ == "__main__":
+    treinar()
