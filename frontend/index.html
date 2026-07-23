@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Dashboard full stack para análise de ocorrências sintéticas e demonstração de machine learning.">
   <meta name="theme-color" content="#0f172a">
+  <meta name="author" content="Ricardo Lacerda Pereira">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Dashboard Forense | Portfólio de Data Science">
+  <meta property="og:description" content="Projeto full stack com Flask, PostgreSQL/Supabase, visualização interativa e machine learning.">
+  <meta property="og:url" content="https://data-science-dashboard-vafr.onrender.com/">
+  <meta property="og:image" content="https://data-science-dashboard-vafr.onrender.com/logo.png">
+  <meta property="og:image:alt" content="Logo do Dashboard Forense">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Dashboard Forense | Portfólio de Data Science">
+  <meta name="twitter:description" content="Projeto full stack com Flask, PostgreSQL/Supabase e machine learning.">
+  <meta name="twitter:image" content="https://data-science-dashboard-vafr.onrender.com/logo.png">
+  <link rel="canonical" href="https://data-science-dashboard-vafr.onrender.com/">
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
   <title>Dashboard Forense | Portfólio de Data Science</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,37 +28,31 @@
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/dashboard.css">
 </head>
-<body>
+<body class="is-loading">
   <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
 
   <header class="topbar">
     <div class="topbar__content">
       <a class="brand" href="#visao-geral" aria-label="Dashboard Forense - início">
         <img src="./logo.png" alt="Logo do Dashboard Forense" class="brand__logo">
-        <span>
-          <strong>Dashboard Forense</strong>
-          <small>Data Science Portfolio</small>
-        </span>
+        <span><strong>Dashboard Forense</strong><small>Data Science Portfolio</small></span>
       </a>
 
       <nav class="topbar__nav" aria-label="Navegação principal">
-        <a href="#visao-geral">Visão geral</a>
+        <a href="#visao-geral" aria-current="page">Visão geral</a>
         <a href="#ocorrencias">Ocorrências</a>
         <a href="#modelo">Modelo</a>
         <a href="#simulacao">Simulação</a>
       </nav>
 
       <div class="topbar__actions">
-        <span id="apiStatus" class="status-badge status-badge--loading" aria-live="polite">
-          <span class="status-dot" aria-hidden="true"></span>
-          Verificando API
-        </span>
+        <span id="apiStatus" class="status-badge status-badge--loading" aria-live="polite"><span class="status-dot" aria-hidden="true"></span>Verificando API</span>
         <a class="button button--secondary button--compact" href="https://github.com/Riclacper/data-Science-Dashboard" target="_blank" rel="noreferrer">Ver código</a>
       </div>
     </div>
   </header>
 
-  <main id="conteudo-principal" class="page-shell">
+  <main id="conteudo-principal" class="page-shell" aria-busy="true">
     <section id="visao-geral" class="hero">
       <div class="hero__content">
         <span class="eyebrow">Projeto full stack publicado</span>
@@ -61,11 +70,13 @@
 
     <section class="notice" aria-label="Aviso sobre os dados">
       <div class="notice__icon" aria-hidden="true">i</div>
-      <div>
-        <strong>Ambiente demonstrativo</strong>
-        <p>Todos os registros e resultados são sintéticos. Não representam ocorrências reais nem devem ser usados para decisões operacionais.</p>
-      </div>
+      <div><strong>Ambiente demonstrativo</strong><p>Todos os registros e resultados são sintéticos. Não representam ocorrências reais nem devem ser usados para decisões operacionais.</p></div>
     </section>
+
+    <div id="loadingStatus" class="loading-status" role="status" aria-live="polite">
+      <span class="loader loader--small" aria-hidden="true"></span>
+      <div><strong>Inicializando os dados</strong><span>O serviço gratuito pode levar alguns segundos para responder.</span></div>
+    </div>
 
     <section id="globalError" class="error-panel" hidden aria-live="assertive">
       <div><strong>Não foi possível carregar o dashboard.</strong><p id="globalErrorMessage">Verifique a conexão e tente novamente.</p></div>
@@ -82,26 +93,42 @@
 
     <section class="panel" aria-labelledby="filtrosTitulo">
       <div class="section-heading">
-        <div><span class="eyebrow">Exploração</span><h2 id="filtrosTitulo">Filtros combináveis</h2><p>Refine os indicadores, gráficos e a tabela usando múltiplos critérios.</p></div>
+        <div><span class="eyebrow">Exploração</span><h2 id="filtrosTitulo">Filtros combináveis</h2><p>Refine os indicadores, gráficos e a tabela. As alterações são aplicadas automaticamente.</p></div>
         <button id="exportButton" class="button button--secondary" type="button">Exportar CSV</button>
       </div>
 
       <form id="filtersForm" class="filter-grid">
-        <label class="field field--wide"><span>Busca</span><input id="filterSearch" name="busca" type="search" placeholder="ID, descrição, perito, cidade..." autocomplete="off"></label>
+        <label class="field field--wide"><span>Busca</span><input id="filterSearch" name="busca" type="search" placeholder="ID, descrição, equipe, cidade..." autocomplete="off"></label>
         <label class="field"><span>Tipo</span><select id="filterType" name="tipoCrime"><option value="">Todos</option></select></label>
         <label class="field"><span>Status</span><select id="filterStatus" name="status"><option value="">Todos</option></select></label>
         <label class="field"><span>Cidade</span><select id="filterCity" name="cidade"><option value="">Todas</option></select></label>
         <label class="field"><span>UF</span><select id="filterUf" name="uf"><option value="">Todas</option></select></label>
         <label class="field"><span>Data inicial</span><input id="filterDateFrom" name="dataInicial" type="date"></label>
         <label class="field"><span>Data final</span><input id="filterDateTo" name="dataFinal" type="date"></label>
-        <div class="filter-actions"><button class="button button--primary" type="submit">Aplicar filtros</button><button id="clearFiltersButton" class="button button--ghost" type="button">Limpar</button></div>
+        <div class="filter-actions"><button class="button button--primary" type="submit">Aplicar agora</button><button id="clearFiltersButton" class="button button--ghost" type="button">Limpar</button></div>
       </form>
+      <div id="activeFilters" class="filter-chips" hidden aria-live="polite"></div>
     </section>
 
     <section class="chart-grid" aria-label="Visualizações dos dados">
-      <article class="panel chart-card"><div class="chart-card__header"><div><h2>Ocorrências por tipo</h2><p>Distribuição dos registros após os filtros.</p></div></div><div class="chart-container"><canvas id="typeChart"></canvas></div></article>
-      <article class="panel chart-card"><div class="chart-card__header"><div><h2>Status dos casos</h2><p>Participação de cada etapa no conjunto filtrado.</p></div></div><div class="chart-container"><canvas id="statusChart"></canvas></div></article>
-      <article class="panel chart-card chart-card--wide"><div class="chart-card__header"><div><h2>Distribuição por cidade</h2><p>Comparativo geográfico dos registros disponíveis.</p></div></div><div class="chart-container chart-container--compact"><canvas id="cityChart"></canvas></div></article>
+      <article class="panel chart-card">
+        <div class="chart-card__header"><div><h2>Ocorrências por tipo</h2><p>Distribuição dos registros após os filtros.</p></div><button class="button button--ghost button--compact chart-data-toggle" type="button" data-target="typeChartData" aria-controls="typeChartData" aria-expanded="false">Ver dados</button></div>
+        <p id="typeChartSummary" class="sr-only" aria-live="polite"></p>
+        <div class="chart-container"><canvas id="typeChart" role="img" aria-label="Gráfico de ocorrências por tipo" aria-describedby="typeChartSummary">Distribuição de ocorrências por tipo.</canvas></div>
+        <div id="typeChartData" class="chart-data" hidden></div>
+      </article>
+      <article class="panel chart-card">
+        <div class="chart-card__header"><div><h2>Status dos casos</h2><p>Participação de cada etapa no conjunto filtrado.</p></div><button class="button button--ghost button--compact chart-data-toggle" type="button" data-target="statusChartData" aria-controls="statusChartData" aria-expanded="false">Ver dados</button></div>
+        <p id="statusChartSummary" class="sr-only" aria-live="polite"></p>
+        <div class="chart-container"><canvas id="statusChart" role="img" aria-label="Gráfico de status dos casos" aria-describedby="statusChartSummary">Distribuição dos casos por status.</canvas></div>
+        <div id="statusChartData" class="chart-data" hidden></div>
+      </article>
+      <article class="panel chart-card chart-card--wide">
+        <div class="chart-card__header"><div><h2>Distribuição por cidade</h2><p>Comparativo geográfico dos registros disponíveis.</p></div><button class="button button--ghost button--compact chart-data-toggle" type="button" data-target="cityChartData" aria-controls="cityChartData" aria-expanded="false">Ver dados</button></div>
+        <p id="cityChartSummary" class="sr-only" aria-live="polite"></p>
+        <div class="chart-container chart-container--compact"><canvas id="cityChart" role="img" aria-label="Gráfico de distribuição por cidade" aria-describedby="cityChartSummary">Distribuição das ocorrências por cidade.</canvas></div>
+        <div id="cityChartData" class="chart-data" hidden></div>
+      </article>
     </section>
 
     <section id="ocorrencias" class="panel" aria-labelledby="ocorrenciasTitulo">
@@ -110,12 +137,13 @@
         <label class="field field--inline"><span>Itens por página</span><select id="pageSize"><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
       </div>
 
-      <div class="table-wrapper">
+      <div class="table-wrapper occurrences-table-wrapper">
         <table class="data-table">
           <thead><tr><th><button type="button" class="sort-button" data-sort="id">ID</button></th><th><button type="button" class="sort-button" data-sort="tipoCrime">Tipo</button></th><th><button type="button" class="sort-button" data-sort="status">Status</button></th><th><button type="button" class="sort-button" data-sort="data">Data</button></th><th><button type="button" class="sort-button" data-sort="hora">Hora</button></th><th><button type="button" class="sort-button" data-sort="cidade">Cidade/UF</button></th><th><button type="button" class="sort-button" data-sort="perito">Equipe</button></th></tr></thead>
           <tbody id="occurrencesTableBody"></tbody>
         </table>
       </div>
+      <div id="occurrenceCards" class="occurrence-cards" aria-live="polite"></div>
       <div class="pagination" aria-label="Paginação da tabela"><button id="previousPage" class="button button--ghost button--compact" type="button">Anterior</button><span id="paginationInfo">Página 1 de 1</span><button id="nextPage" class="button button--ghost button--compact" type="button">Próxima</button></div>
     </section>
 
@@ -128,8 +156,18 @@
         <article class="metric-card"><span>Data de referência</span><strong id="metricReferenceDate">—</strong></article>
       </div>
       <div class="chart-grid">
-        <article class="panel chart-card"><div class="chart-card__header"><div><h3>Importância das variáveis</h3><p>Participação agregada das entradas na classificação.</p></div></div><div class="chart-container"><canvas id="featuresChart"></canvas></div></article>
-        <article class="panel chart-card"><div class="chart-card__header"><div><h3>Métricas por classe</h3><p>Precisão, cobertura e F1-score.</p></div></div><div class="chart-container"><canvas id="metricsChart"></canvas></div></article>
+        <article class="panel chart-card">
+          <div class="chart-card__header"><div><h3>Importância das variáveis</h3><p>Participação agregada das entradas na classificação.</p></div><button class="button button--ghost button--compact chart-data-toggle" type="button" data-target="featuresChartData" aria-controls="featuresChartData" aria-expanded="false">Ver dados</button></div>
+          <p id="featuresChartSummary" class="sr-only" aria-live="polite"></p>
+          <div class="chart-container"><canvas id="featuresChart" role="img" aria-label="Gráfico de importância das variáveis" aria-describedby="featuresChartSummary">Importância das variáveis do modelo.</canvas></div>
+          <div id="featuresChartData" class="chart-data" hidden></div>
+        </article>
+        <article class="panel chart-card">
+          <div class="chart-card__header"><div><h3>Métricas por classe</h3><p>Precisão, cobertura e F1-score.</p></div><button class="button button--ghost button--compact chart-data-toggle" type="button" data-target="metricsChartData" aria-controls="metricsChartData" aria-expanded="false">Ver dados</button></div>
+          <p id="metricsChartSummary" class="sr-only" aria-live="polite"></p>
+          <div class="chart-container"><canvas id="metricsChart" role="img" aria-label="Gráfico de métricas por classe" aria-describedby="metricsChartSummary">Precisão, cobertura e F1-score por classe.</canvas></div>
+          <div id="metricsChartData" class="chart-data" hidden></div>
+        </article>
       </div>
       <div class="model-detail-grid">
         <article class="panel"><h3>Tabela de métricas</h3><div class="table-wrapper"><table class="data-table data-table--compact"><thead><tr><th>Classe</th><th>Precisão</th><th>Cobertura</th><th>F1-score</th><th>Amostras</th></tr></thead><tbody id="metricsTableBody"></tbody></table></div></article>
@@ -152,8 +190,7 @@
   </main>
 
   <footer class="footer"><p>Desenvolvido por Ricardo Lacerda Pereira como projeto de portfólio.</p><div><a href="https://github.com/Riclacper/data-Science-Dashboard" target="_blank" rel="noreferrer">GitHub</a><a href="https://data-science-dashboard-api.onrender.com/health" target="_blank" rel="noreferrer">Health check</a></div></footer>
-
-  <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite"><div class="loader" aria-hidden="true"></div><strong>Carregando dashboard</strong><span>O serviço gratuito pode levar alguns segundos para iniciar.</span></div>
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script type="module" src="./js/main.js"></script>
