@@ -1,4 +1,4 @@
-const API = 'http://127.0.0.1:5000';
+const API = 'https://data-science-dashboard-api.onrender.com';
 
 async function carregarCasos() {
   const res = await fetch(`${API}/casos`);
