@@ -1,11 +1,12 @@
 # Dashboard Forense
 
-Dashboard full stack para análise exploratória de ocorrências sintéticas, desenvolvido como projeto de portfólio em Data Science e desenvolvimento web.
+Dashboard full stack para análise exploratória e classificação demonstrativa de ocorrências sintéticas, desenvolvido como projeto de portfólio em Data Science, backend e desenvolvimento web.
 
 [![CI](https://github.com/Riclacper/data-Science-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Riclacper/data-Science-Dashboard/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000)](https://flask.palletsprojects.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1)](https://supabase.com/)
+[![Lighthouse](https://img.shields.io/badge/Lighthouse-Desktop%2093%20%7C%20Mobile%2087-0cce6b)](#qualidade-da-interface)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ## Demonstração online
@@ -14,21 +15,22 @@ Dashboard full stack para análise exploratória de ocorrências sintéticas, de
 - **API:** https://data-science-dashboard-api.onrender.com
 - **Health check:** https://data-science-dashboard-api.onrender.com/health
 
-> O serviço utiliza a camada gratuita do Render e pode levar alguns segundos para iniciar após um período de inatividade.
+> O projeto utiliza a camada gratuita do Render. Após um período de inatividade, a primeira requisição pode levar alguns segundos enquanto o serviço é reiniciado.
 
 ## Visão geral
 
-O projeto demonstra uma arquitetura completa, desde a geração e persistência dos dados até a publicação de um dashboard responsivo:
+O projeto demonstra uma arquitetura completa, desde a geração e persistência dos dados até a publicação de um dashboard responsivo e acessível:
 
-- frontend público, modular e acessível;
-- API REST desenvolvida com Flask;
+- frontend público, modular e orientado a componentes de interface;
+- API REST desenvolvida com Flask e servida por Gunicorn;
 - persistência em PostgreSQL/Supabase com SQLAlchemy;
-- filtros combináveis e paginação processada no backend;
+- filtros combináveis, busca, ordenação e paginação processados no backend;
 - gráficos interativos com Chart.js;
+- visualização alternativa dos gráficos em tabelas acessíveis;
 - exportação CSV do conjunto filtrado;
 - pipeline de classificação com scikit-learn;
 - inicialização automática e idempotente do ambiente demonstrativo;
-- testes automatizados, lint e integração contínua.
+- testes automatizados, lint e integração contínua para frontend e backend.
 
 ## Arquitetura
 
@@ -38,7 +40,7 @@ flowchart LR
     F -->|HTTPS / JSON| A[API Flask / Gunicorn]
     A --> D[(PostgreSQL / Supabase)]
     A --> M[Pipeline Random Forest<br/>scikit-learn]
-    G[GitHub Actions] -->|lint e testes| R[Repositório GitHub]
+    G[GitHub Actions] -->|sintaxe, lint e testes| R[Repositório GitHub]
     R -->|deploy automático| F
     R -->|deploy automático| A
 ```
@@ -49,11 +51,21 @@ flowchart LR
 
 - indicadores gerais de volume, status, tipo e cidade;
 - filtros por texto, tipo, status, cidade, UF e período;
+- aplicação automática dos filtros, com debounce na busca textual;
+- chips removíveis para identificação dos filtros ativos;
+- filtros, página e ordenação preservados na URL;
 - gráficos de distribuição por tipo, status e cidade;
-- tabela com paginação, ordenação e seleção de quantidade por página;
+- estados vazios quando os filtros não retornam registros;
+- tabelas alternativas com os valores dos gráficos;
+- tabela desktop com paginação, ordenação e seleção de quantidade por página;
+- cards de ocorrências em dispositivos móveis;
 - exportação CSV compatível com caracteres acentuados;
-- estados de carregamento, indisponibilidade e nova tentativa;
-- layout responsivo para desktop, tablet e celular.
+- notificações toast para sucesso e falhas operacionais;
+- carregamento progressivo com skeletons;
+- tratamento de indisponibilidade da API e nova tentativa;
+- navegação com destaque automático da seção ativa;
+- layout responsivo para desktop, tablet e celular;
+- favicon, metadados Open Graph, Twitter Card e URL canônica.
 
 ### Machine learning
 
@@ -63,7 +75,8 @@ flowchart LR
 - pipeline único para treinamento e inferência;
 - importância agregada das variáveis;
 - precisão, cobertura, F1-score e matriz de confusão;
-- formulário público para simulação de classificação.
+- formulário público para simulação de classificação;
+- retorno da classe prevista e do percentual de confiança.
 
 ### Backend
 
@@ -71,9 +84,45 @@ flowchart LR
 - atualização segura da base sintética legada;
 - carga idempotente de dados demonstrativos;
 - treinamento automático quando os artefatos não existem;
-- validação de payloads;
+- validação de payloads e parâmetros;
 - paginação, ordenação, busca e filtros no servidor;
-- endpoint de health check.
+- endpoint de health check;
+- configuração de CORS por variável de ambiente.
+
+## Qualidade da interface
+
+Auditorias executadas em 23/07/2026 com Chrome DevTools sobre a versão publicada:
+
+| Categoria | Desktop | Mobile |
+|---|---:|---:|
+| Performance | 93 | 87 |
+| Acessibilidade | 97 | 97 |
+| Boas práticas | 100 | 100 |
+| SEO | 100 | 100 |
+
+Métricas locais de experiência após o carregamento da aplicação:
+
+| Métrica | Resultado | Interpretação |
+|---|---:|---|
+| Largest Contentful Paint — LCP | 0,01 s | carregamento visual rápido |
+| Cumulative Layout Shift — CLS | 0 | ausência de deslocamentos inesperados |
+| Interaction to Next Paint — INP | 104 ms | boa resposta às interações |
+
+> Os resultados podem variar conforme rede, cache, dispositivo, disponibilidade do Render e tempo de inicialização da API. As métricas locais foram coletadas com a aplicação já carregada.
+
+## Acessibilidade
+
+O frontend inclui:
+
+- link de salto para o conteúdo principal;
+- foco visível para navegação por teclado;
+- regiões com `aria-live` para mensagens dinâmicas;
+- nomes e descrições acessíveis nos gráficos;
+- resumos textuais para leitores de tela;
+- tabelas alternativas para os dados dos gráficos;
+- indicação da seção atual no menu;
+- suporte a `prefers-reduced-motion`;
+- cards mobile sem dependência de rolagem horizontal na tabela principal.
 
 ## Dados sintéticos
 
@@ -89,7 +138,7 @@ Os nomes, endereços, equipes e demais informações são fictícios. As métric
 | Backend | Python, Flask, Flask-CORS, Gunicorn |
 | Banco | PostgreSQL, Supabase, SQLAlchemy, psycopg |
 | Data Science | pandas, scikit-learn, joblib |
-| Qualidade | pytest, Ruff, GitHub Actions |
+| Qualidade | Node.js, pytest, Ruff, GitHub Actions |
 | Deploy | Render Static Site, Render Web Service |
 
 ## Estrutura do projeto
@@ -221,6 +270,8 @@ Acesse `http://localhost:8000`.
 
 ## Testes e qualidade
 
+### Backend
+
 ```bash
 pip install -r backend/requirements-dev.txt
 cd backend
@@ -228,7 +279,19 @@ ruff check .
 pytest -q
 ```
 
-O workflow em `.github/workflows/ci.yml` executa essas verificações em pushes e pull requests.
+### Frontend
+
+```bash
+find frontend/js -name '*.js' -print0 | xargs -0 -n1 node --check
+```
+
+O workflow em `.github/workflows/ci.yml` executa automaticamente:
+
+- verificação sintática de todos os módulos JavaScript;
+- lint do backend com Ruff;
+- testes automatizados da API com pytest.
+
+As verificações são executadas em pushes para a `main` e em pull requests.
 
 ## Segurança e privacidade
 
@@ -236,22 +299,25 @@ O workflow em `.github/workflows/ci.yml` executa essas verificações em pushes 
 - o arquivo `.env` é ignorado pelo Git;
 - o dashboard não utiliza autenticação simulada no navegador;
 - os dados são fictícios e identificados como sintéticos;
-- o CORS pode ser restrito aos domínios efetivamente publicados.
+- o CORS pode ser restrito aos domínios efetivamente publicados;
+- nenhuma credencial de banco é enviada ao frontend.
 
 ## Limitações conhecidas
 
 - os dados não refletem uma distribuição real de ocorrências;
 - as métricas servem apenas para validação técnica do pipeline;
 - os artefatos do modelo são gerados no filesystem efêmero do serviço e podem ser recriados após novos deploys;
+- o primeiro acesso pode ser mais lento quando o serviço gratuito do Render está inativo;
 - o envio de relatórios por e-mail não integra o escopo atual do projeto.
 
-## Próximas evoluções
+## Evoluções futuras opcionais
 
 - documentação OpenAPI/Swagger;
+- testes end-to-end do frontend com Playwright;
 - testes de integração com PostgreSQL em ambiente isolado;
 - versionamento formal do dataset e do modelo;
-- monitoramento de performance e observabilidade;
-- migração opcional do frontend para React e Vite.
+- imagem Open Graph dedicada em formato `1200 × 630 px`;
+- monitoramento e observabilidade da API em produção.
 
 ## Autor
 
