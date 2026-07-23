@@ -46,11 +46,12 @@
 .metric-card { display: grid; min-width: 0; gap: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: linear-gradient(180deg, #fff, #f8fafc); padding: 20px; }
 .metric-card span { color: var(--color-text-muted); font-size: 0.8rem; font-weight: 700; }
 .metric-card strong { overflow-wrap: anywhere; font-size: 1.5rem; }
-.model-detail-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr); gap: 24px; }
-.confusion-matrix { max-width: 100%; overflow-x: auto; margin-top: 18px; -webkit-overflow-scrolling: touch; }
-.confusion-matrix table { width: 100%; min-width: 500px; border-collapse: separate; border-spacing: 6px; }
-.confusion-matrix th, .confusion-matrix td { border-radius: 8px; padding: 10px; text-align: center; }
-.confusion-matrix th { color: var(--color-text-muted); font-size: 0.72rem; }
+.model-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.confusion-matrix { width: 100%; max-width: 100%; overflow: visible; margin-top: 18px; }
+.confusion-matrix table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: separate; border-spacing: 6px; }
+.confusion-matrix th, .confusion-matrix td { border-radius: 8px; padding: clamp(7px, 1vw, 10px) 5px; line-height: 1.2; overflow-wrap: anywhere; text-align: center; }
+.confusion-matrix th { color: var(--color-text-muted); font-size: 0.7rem; }
+.confusion-matrix th:first-child { width: 24%; }
 .confusion-matrix td { background: var(--color-primary-soft); color: var(--color-primary-dark); font-weight: 800; }
 .prediction-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; align-items: end; }
 .prediction-result { margin-top: 20px; border: 1px solid #bfdbfe; border-radius: var(--radius-md); background: #eff6ff; padding: 18px; overflow-wrap: anywhere; }
@@ -92,9 +93,9 @@
   .pagination .button { flex: 1; }
   .error-panel { right: 10px; bottom: 10px; left: 10px; width: auto; align-items: stretch; flex-direction: column; padding: 15px; }
   .error-panel .button { width: 100%; }
-  .confusion-matrix { overflow: visible; margin-top: 12px; }
-  .confusion-matrix table { width: 100%; min-width: 0; table-layout: fixed; border-spacing: 3px; }
-  .confusion-matrix th, .confusion-matrix td { padding: 8px 3px; line-height: 1.15; overflow-wrap: anywhere; }
+  .confusion-matrix { margin-top: 12px; }
+  .confusion-matrix table { border-spacing: 3px; }
+  .confusion-matrix th, .confusion-matrix td { padding: 8px 3px; line-height: 1.15; }
   .confusion-matrix th { font-size: 0.62rem; }
   .confusion-matrix th:first-child { width: 82px; }
   .confusion-matrix td { font-size: 0.82rem; }
