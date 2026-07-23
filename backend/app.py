@@ -5,11 +5,13 @@ import joblib
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from config import CORS_ORIGINS, EVALUATION_PATH, FLASK_DEBUG, MODEL_PATH
 from database import SessionLocal, init_db
 from models import Ocorrencia
+from popular_base import popular
+from train_model_avaliado import treinar
 
 REQUIRED_FIELDS = {"tipoCrime", "status", "cidade", "uf", "hora"}
 FEATURES = ["tipoCrime", "cidade", "uf", "hora_num"]
@@ -22,6 +24,31 @@ def load_model_artifact() -> dict[str, Any] | None:
     if not isinstance(artifact, dict) or "pipeline" not in artifact or "label_encoder" not in artifact:
         raise RuntimeError("model.pkl incompatível. Execute train_model_avaliado.py novamente.")
     return artifact
+
+
+def initialize_production_data(sample_size: int = 100) -> dict[str, int | bool]:
+    """Inicializa tabela, dados demonstrativos e modelo sem duplicar registros."""
+    init_db()
+
+    with SessionLocal() as session:
+        total = session.scalar(select(func.count()).select_from(Ocorrencia)) or 0
+
+    inserted = 0
+    if total == 0:
+        popular(sample_size)
+        inserted = sample_size
+        total = sample_size
+
+    model_trained = False
+    if total >= 10 and (not MODEL_PATH.exists() or not EVALUATION_PATH.exists()):
+        treinar()
+        model_trained = True
+
+    return {
+        "total": int(total),
+        "inserted": inserted,
+        "model_trained": model_trained,
+    }
 
 
 def parse_date(value: Any) -> date | None:
@@ -94,7 +121,14 @@ def aggregate_feature_importances(artifact: dict[str, Any]) -> list[float]:
 def create_app() -> Flask:
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": CORS_ORIGINS}})
-    init_db()
+
+    initialization = initialize_production_data()
+    app.logger.info(
+        "Inicialização concluída: total=%s, inseridos=%s, modelo_treinado=%s",
+        initialization["total"],
+        initialization["inserted"],
+        initialization["model_trained"],
+    )
 
     try:
         model_artifact = load_model_artifact()
