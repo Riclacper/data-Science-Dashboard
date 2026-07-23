@@ -99,6 +99,10 @@
     color: var(--color-primary);
   }
 
+  .mobile-navigation__status {
+    display: none;
+  }
+
   .mobile-navigation__code {
     border-color: var(--color-border);
     background: var(--color-surface);
@@ -112,10 +116,6 @@
 }
 
 @media (max-width: 640px) {
-  .topbar__content {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-  }
-
   .mobile-navigation {
     width: min(calc(100% - 20px), var(--content-width));
     padding-top: 10px;
@@ -167,11 +167,16 @@
 
 @media (max-width: 360px) {
   .topbar__actions {
-    display: flex;
+    display: none;
   }
 
   .brand strong {
     max-width: 100px;
+  }
+
+  .mobile-navigation__status {
+    display: inline-flex;
+    justify-self: start;
   }
 }
 
