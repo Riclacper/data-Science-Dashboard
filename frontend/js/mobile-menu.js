@@ -2,8 +2,9 @@ const topbar = document.querySelector('.topbar');
 const topbarContent = document.querySelector('.topbar__content');
 const desktopNavigation = document.querySelector('.topbar__nav');
 const codeLink = document.querySelector('.topbar__actions .button');
+const apiStatus = document.getElementById('apiStatus');
 
-if (topbar && topbarContent && desktopNavigation && codeLink) {
+if (topbar && topbarContent && desktopNavigation && codeLink && apiStatus) {
   const menuButton = document.createElement('button');
   menuButton.id = 'mobileMenuButton';
   menuButton.className = 'mobile-menu-button';
@@ -29,10 +30,15 @@ if (topbar && topbarContent && desktopNavigation && codeLink) {
     return clone;
   });
 
+  const mobileStatus = apiStatus.cloneNode(true);
+  mobileStatus.removeAttribute('id');
+  mobileStatus.removeAttribute('aria-live');
+  mobileStatus.classList.add('mobile-navigation__status');
+
   const mobileCodeLink = codeLink.cloneNode(true);
   mobileCodeLink.classList.add('mobile-navigation__code');
 
-  mobileNavigation.append(mobileLinks, mobileCodeLink);
+  mobileNavigation.append(mobileLinks, mobileStatus, mobileCodeLink);
   topbarContent.appendChild(menuButton);
   topbar.appendChild(mobileNavigation);
 
@@ -44,6 +50,11 @@ if (topbar && topbarContent && desktopNavigation && codeLink) {
         clonedLinks[index].removeAttribute('aria-current');
       }
     });
+  }
+
+  function syncStatus() {
+    mobileStatus.className = `${apiStatus.className} mobile-navigation__status`;
+    mobileStatus.innerHTML = apiStatus.innerHTML;
   }
 
   function setMenuOpen(open, returnFocus = false) {
@@ -85,5 +96,14 @@ if (topbar && topbarContent && desktopNavigation && codeLink) {
     attributeFilter: ['aria-current'],
   }));
 
+  const statusObserver = new MutationObserver(syncStatus);
+  statusObserver.observe(apiStatus, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+
   syncActiveLink();
+  syncStatus();
 }
