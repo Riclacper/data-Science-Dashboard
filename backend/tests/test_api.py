@@ -1,11 +1,15 @@
 import importlib
 import os
+import sys
 from pathlib import Path
 
 import pytest
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 TEST_ROOT = Path(__file__).resolve().parent / ".runtime"
 TEST_ROOT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(BACKEND_DIR))
+
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_ROOT / 'test.db'}"
 os.environ["MODEL_PATH"] = str(TEST_ROOT / "model.pkl")
 os.environ["EVALUATION_PATH"] = str(TEST_ROOT / "avaliacao_modelo.json")
