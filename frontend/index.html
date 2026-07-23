@@ -1,182 +1,161 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Crimes</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: 'Roboto', sans-serif;
-      background-color: #f5f5f5;
-      color: #222;
-      padding: 30px;
-      max-width: 1000px;
-      margin: auto;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    h1 {
-      font-size: 28px;
-    }
-
-    .controle {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      margin: 20px 0;
-    }
-
-    input, select, button {
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    button {
-      background-color: #28a745;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    button:hover {
-      background-color: #218838;
-    }
-
-    canvas {
-      max-width: 100%;
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 30px;
-    }
-
-    #tabelaAvaliacao {
-      border-collapse: collapse;
-      width: 100%;
-      background-color: white;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-top: 30px;
-    }
-
-    #tabelaAvaliacao th, #tabelaAvaliacao td {
-      padding: 12px 16px;
-      border-bottom: 1px solid #eee;
-      text-align: center;
-      font-size: 15px;
-    }
-
-    #tabelaAvaliacao th {
-      background-color: #f5f5f5;
-      font-weight: 600;
-      color: #333;
-    }
-
-    #tabelaAvaliacao td {
-      color: #444;
-    }
-
-    #tabelaAvaliacao tr:last-child td {
-      border-bottom: none;
-    }
-
-    #tabelaAvaliacao tr:hover {
-      background-color: #f9f9f9;
-    }
-  </style>
-
-  <script>
-    if (localStorage.getItem('usuario_logado') !== 'true') {
-      window.location.href = 'login.html';
-    }
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard full stack para análise de ocorrências sintéticas e demonstração de machine learning.">
+  <meta name="theme-color" content="#0f172a">
+  <title>Dashboard Forense | Portfólio de Data Science</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/variables.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/dashboard.css">
 </head>
 <body>
-  <header>
-    <h1>Dashboard Forense</h1>
-    <button onclick="logout()">Sair</button>
+  <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
+
+  <header class="topbar">
+    <div class="topbar__content">
+      <a class="brand" href="#visao-geral" aria-label="Dashboard Forense - início">
+        <img src="./logo.png" alt="Logo do Dashboard Forense" class="brand__logo">
+        <span>
+          <strong>Dashboard Forense</strong>
+          <small>Data Science Portfolio</small>
+        </span>
+      </a>
+
+      <nav class="topbar__nav" aria-label="Navegação principal">
+        <a href="#visao-geral">Visão geral</a>
+        <a href="#ocorrencias">Ocorrências</a>
+        <a href="#modelo">Modelo</a>
+        <a href="#simulacao">Simulação</a>
+      </nav>
+
+      <div class="topbar__actions">
+        <span id="apiStatus" class="status-badge status-badge--loading" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          Verificando API
+        </span>
+        <a class="button button--secondary button--compact" href="https://github.com/Riclacper/data-Science-Dashboard" target="_blank" rel="noreferrer">Ver código</a>
+      </div>
+    </div>
   </header>
 
-  <div class="controle">
-    <label for="filtro">Filtrar por tipo:</label>
-    <select id="filtro" onchange="carregarCasos()">
-      <option value="">Todos</option>
-      <option value="Furto">Furto</option>
-      <option value="Homicídio">Homicídio</option>
-      <option value="Roubo">Roubo</option>
-      <option value="Agressão">Agressão</option>
-      <option value="Estupro">Estupro</option>
-    </select>
-    <button onclick="exportarCSV()">Exportar CSV</button>
-  </div>
+  <main id="conteudo-principal" class="page-shell">
+    <section id="visao-geral" class="hero">
+      <div class="hero__content">
+        <span class="eyebrow">Projeto full stack publicado</span>
+        <h1>Análise exploratória e classificação de ocorrências sintéticas</h1>
+        <p>Aplicação demonstrativa com API Flask, PostgreSQL/Supabase, visualização interativa, paginação no backend e pipeline de machine learning com scikit-learn.</p>
+        <div class="hero__actions">
+          <a class="button button--primary" href="#ocorrencias">Explorar dados</a>
+          <a class="button button--ghost" href="https://data-science-dashboard-api.onrender.com" target="_blank" rel="noreferrer">Abrir API</a>
+        </div>
+      </div>
+      <div class="hero__architecture" aria-label="Resumo da arquitetura">
+        <span>Frontend estático</span><span aria-hidden="true">→</span><span>API Flask</span><span aria-hidden="true">→</span><span>Supabase</span><span aria-hidden="true">+</span><span>Random Forest</span>
+      </div>
+    </section>
 
-  <canvas id="grafico"></canvas>
-  <canvas id="graficoFeatures"></canvas>
+    <section class="notice" aria-label="Aviso sobre os dados">
+      <div class="notice__icon" aria-hidden="true">i</div>
+      <div>
+        <strong>Ambiente demonstrativo</strong>
+        <p>Todos os registros e resultados são sintéticos. Não representam ocorrências reais nem devem ser usados para decisões operacionais.</p>
+      </div>
+    </section>
 
-  <h2>Métricas de Avaliação do Modelo</h2>
-  <table id="tabelaAvaliacao">
-    <thead>
-      <tr>
-        <th>Classe</th>
-        <th>Desempenho</th>
-        <th>Precisão</th>
-        <th>Cobertura</th>
-        <th>Total de Casos</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table><br></br>
+    <section id="globalError" class="error-panel" hidden aria-live="assertive">
+      <div><strong>Não foi possível carregar o dashboard.</strong><p id="globalErrorMessage">Verifique a conexão e tente novamente.</p></div>
+      <button id="retryButton" class="button button--danger" type="button">Tentar novamente</button>
+    </section>
 
-  <canvas id="graficoRadarMetricas"></canvas>
-  <canvas id="graficoMetricas"></canvas>
+    <section class="kpi-grid" aria-label="Indicadores gerais">
+      <article class="kpi-card"><span class="kpi-card__label">Total de ocorrências</span><strong id="kpiTotal" class="kpi-card__value">—</strong><small id="kpiTotalHint">Base completa</small></article>
+      <article class="kpi-card"><span class="kpi-card__label">Em investigação</span><strong id="kpiInvestigacao" class="kpi-card__value">—</strong><small id="kpiInvestigacaoHint">—</small></article>
+      <article class="kpi-card"><span class="kpi-card__label">Concluídas</span><strong id="kpiConcluidas" class="kpi-card__value">—</strong><small id="kpiConcluidasHint">—</small></article>
+      <article class="kpi-card"><span class="kpi-card__label">Tipo mais frequente</span><strong id="kpiTipo" class="kpi-card__value kpi-card__value--text">—</strong><small id="kpiTipoHint">—</small></article>
+      <article class="kpi-card"><span class="kpi-card__label">Cidade com mais registros</span><strong id="kpiCidade" class="kpi-card__value kpi-card__value--text">—</strong><small id="kpiCidadeHint">—</small></article>
+    </section>
 
-  <h2>Previsão do Status da Ocorrência</h2>
-  <div class="controle">
-    <select id="tipoCrime">
-      <option>Furto</option>
-      <option>Roubo</option>
-      <option>Homicídio</option>
-      <option>Agressão</option>
-      <option>Estupro</option>
-    </select>
-    <select id="cidade">
-      <option>Recife</option>
-      <option>Olinda</option>
-      <option>Salvador</option>
-      <option>Campinas</option>
-      <option>Rio de Janeiro</option>
-    </select>
-    <select id="uf">
-      <option>PE</option>
-      <option>SP</option>
-      <option>BA</option>
-      <option>RJ</option>
-    </select>
-    <input id="hora" type="time" placeholder="Hora">
-    <button onclick="predizer()">Prever Status</button>
-  </div>
-  <p id="resposta"></p>
+    <section class="panel" aria-labelledby="filtrosTitulo">
+      <div class="section-heading">
+        <div><span class="eyebrow">Exploração</span><h2 id="filtrosTitulo">Filtros combináveis</h2><p>Refine os indicadores, gráficos e a tabela usando múltiplos critérios.</p></div>
+        <button id="exportButton" class="button button--secondary" type="button">Exportar CSV</button>
+      </div>
 
-<h2>Enviar Relatório por E-mail</h2>
-<div class="controle">
-  <input id="emailDestino" type="email" placeholder="Digite o e-mail" />
-  <button onclick="enviarRelatorio()">Enviar Relatório</button>
-</div>
-<p id="statusEnvio"></p>
+      <form id="filtersForm" class="filter-grid">
+        <label class="field field--wide"><span>Busca</span><input id="filterSearch" name="busca" type="search" placeholder="ID, descrição, perito, cidade..." autocomplete="off"></label>
+        <label class="field"><span>Tipo</span><select id="filterType" name="tipoCrime"><option value="">Todos</option></select></label>
+        <label class="field"><span>Status</span><select id="filterStatus" name="status"><option value="">Todos</option></select></label>
+        <label class="field"><span>Cidade</span><select id="filterCity" name="cidade"><option value="">Todas</option></select></label>
+        <label class="field"><span>UF</span><select id="filterUf" name="uf"><option value="">Todas</option></select></label>
+        <label class="field"><span>Data inicial</span><input id="filterDateFrom" name="dataInicial" type="date"></label>
+        <label class="field"><span>Data final</span><input id="filterDateTo" name="dataFinal" type="date"></label>
+        <div class="filter-actions"><button class="button button--primary" type="submit">Aplicar filtros</button><button id="clearFiltersButton" class="button button--ghost" type="button">Limpar</button></div>
+      </form>
+    </section>
 
+    <section class="chart-grid" aria-label="Visualizações dos dados">
+      <article class="panel chart-card"><div class="chart-card__header"><div><h2>Ocorrências por tipo</h2><p>Distribuição dos registros após os filtros.</p></div></div><div class="chart-container"><canvas id="typeChart"></canvas></div></article>
+      <article class="panel chart-card"><div class="chart-card__header"><div><h2>Status dos casos</h2><p>Participação de cada etapa no conjunto filtrado.</p></div></div><div class="chart-container"><canvas id="statusChart"></canvas></div></article>
+      <article class="panel chart-card chart-card--wide"><div class="chart-card__header"><div><h2>Distribuição por cidade</h2><p>Comparativo geográfico dos registros disponíveis.</p></div></div><div class="chart-container chart-container--compact"><canvas id="cityChart"></canvas></div></article>
+    </section>
 
-  <script src="script.js"></script>
+    <section id="ocorrencias" class="panel" aria-labelledby="ocorrenciasTitulo">
+      <div class="section-heading section-heading--table">
+        <div><span class="eyebrow">Dados detalhados</span><h2 id="ocorrenciasTitulo">Ocorrências</h2><p id="tableSummary" aria-live="polite">Carregando registros...</p></div>
+        <label class="field field--inline"><span>Itens por página</span><select id="pageSize"><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr><th><button type="button" class="sort-button" data-sort="id">ID</button></th><th><button type="button" class="sort-button" data-sort="tipoCrime">Tipo</button></th><th><button type="button" class="sort-button" data-sort="status">Status</button></th><th><button type="button" class="sort-button" data-sort="data">Data</button></th><th><button type="button" class="sort-button" data-sort="hora">Hora</button></th><th><button type="button" class="sort-button" data-sort="cidade">Cidade/UF</button></th><th><button type="button" class="sort-button" data-sort="perito">Equipe</button></th></tr></thead>
+          <tbody id="occurrencesTableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" aria-label="Paginação da tabela"><button id="previousPage" class="button button--ghost button--compact" type="button">Anterior</button><span id="paginationInfo">Página 1 de 1</span><button id="nextPage" class="button button--ghost button--compact" type="button">Próxima</button></div>
+    </section>
+
+    <section id="modelo" class="model-section" aria-labelledby="modeloTitulo">
+      <div class="section-heading"><div><span class="eyebrow">Machine learning</span><h2 id="modeloTitulo">Avaliação do modelo</h2><p>Random Forest com pré-processamento categórico integrado ao pipeline.</p></div><span id="modelAvailability" class="status-badge status-badge--loading">Carregando modelo</span></div>
+      <div class="model-summary-grid">
+        <article class="metric-card"><span>Acurácia global</span><strong id="metricAccuracy">—</strong></article>
+        <article class="metric-card"><span>Amostras avaliadas</span><strong id="metricSamples">—</strong></article>
+        <article class="metric-card"><span>Classes</span><strong id="metricClasses">—</strong></article>
+        <article class="metric-card"><span>Data de referência</span><strong id="metricReferenceDate">—</strong></article>
+      </div>
+      <div class="chart-grid">
+        <article class="panel chart-card"><div class="chart-card__header"><div><h3>Importância das variáveis</h3><p>Participação agregada das entradas na classificação.</p></div></div><div class="chart-container"><canvas id="featuresChart"></canvas></div></article>
+        <article class="panel chart-card"><div class="chart-card__header"><div><h3>Métricas por classe</h3><p>Precisão, cobertura e F1-score.</p></div></div><div class="chart-container"><canvas id="metricsChart"></canvas></div></article>
+      </div>
+      <div class="model-detail-grid">
+        <article class="panel"><h3>Tabela de métricas</h3><div class="table-wrapper"><table class="data-table data-table--compact"><thead><tr><th>Classe</th><th>Precisão</th><th>Cobertura</th><th>F1-score</th><th>Amostras</th></tr></thead><tbody id="metricsTableBody"></tbody></table></div></article>
+        <article class="panel"><h3>Matriz de confusão</h3><p class="muted">Linhas representam classes reais; colunas representam classes previstas.</p><div id="confusionMatrix" class="confusion-matrix"></div></article>
+      </div>
+    </section>
+
+    <section id="simulacao" class="panel simulation-panel" aria-labelledby="simulacaoTitulo">
+      <div class="section-heading"><div><span class="eyebrow">Demonstração do pipeline</span><h2 id="simulacaoTitulo">Simulação de classificação</h2><p>Envie uma combinação de atributos para o modelo. O resultado é exclusivamente demonstrativo.</p></div></div>
+      <form id="predictionForm" class="prediction-grid">
+        <label class="field"><span>Tipo de ocorrência</span><select id="predictionType" required></select></label>
+        <label class="field"><span>Cidade</span><select id="predictionCity" required></select></label>
+        <label class="field"><span>UF</span><select id="predictionUf" required></select></label>
+        <label class="field"><span>Data</span><input id="predictionDate" type="date" required></label>
+        <label class="field"><span>Hora</span><input id="predictionTime" type="time" required></label>
+        <button id="predictionButton" class="button button--primary" type="submit">Executar simulação</button>
+      </form>
+      <div id="predictionResult" class="prediction-result" hidden aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="footer"><p>Desenvolvido por Ricardo Lacerda Pereira como projeto de portfólio.</p><div><a href="https://github.com/Riclacper/data-Science-Dashboard" target="_blank" rel="noreferrer">GitHub</a><a href="https://data-science-dashboard-api.onrender.com/health" target="_blank" rel="noreferrer">Health check</a></div></footer>
+
+  <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite"><div class="loader" aria-hidden="true"></div><strong>Carregando dashboard</strong><span>O serviço gratuito pode levar alguns segundos para iniciar.</span></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script type="module" src="./js/main.js"></script>
 </body>
 </html>
