@@ -2,11 +2,15 @@
 __pycache__/
 *.py[cod]
 *.db
+.pytest_cache/
+.ruff_cache/
 .venv/
 venv/
+backend/tests/.runtime/
 
-# VS Code
+# IDEs
 .vscode/
+.idea/
 
 # Artefatos gerados de Machine Learning
 backend/model.pkl
@@ -23,3 +27,7 @@ backend/avaliacao_modelo.json
 
 # Node.js
 node_modules/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
