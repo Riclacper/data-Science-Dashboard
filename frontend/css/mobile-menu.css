@@ -1,3 +1,13 @@
+body {
+  padding-top: 72px;
+}
+
+.topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  width: 100%;
+}
+
 .mobile-menu-button,
 .mobile-navigation {
   display: none;
@@ -116,6 +126,10 @@
 }
 
 @media (max-width: 640px) {
+  body {
+    padding-top: 64px;
+  }
+
   .mobile-navigation {
     width: min(calc(100% - 20px), var(--content-width));
     padding-top: 10px;
