@@ -8,10 +8,62 @@ function statusClass(status) {
   return 'status-pill--analysis';
 }
 
+function createStatusPill(status) {
+  const pill = document.createElement('span');
+  pill.className = `status-pill ${statusClass(status)}`;
+  pill.textContent = status || 'Não informado';
+  return pill;
+}
+
 function createCell(value) {
   const cell = document.createElement('td');
   cell.textContent = value ?? '—';
   return cell;
+}
+
+function createDetail(term, value) {
+  const wrapper = document.createElement('div');
+  const dt = document.createElement('dt');
+  const dd = document.createElement('dd');
+  dt.textContent = term;
+  dd.textContent = value || '—';
+  wrapper.append(dt, dd);
+  return wrapper;
+}
+
+function renderOccurrenceCards(items) {
+  const container = document.getElementById('occurrenceCards');
+  container.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = 'Nenhuma ocorrência encontrada com os filtros atuais.';
+    container.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const card = document.createElement('article');
+    card.className = 'occurrence-card';
+    const header = document.createElement('div');
+    header.className = 'occurrence-card__header';
+    const title = document.createElement('div');
+    const id = document.createElement('span');
+    id.className = 'occurrence-card__id';
+    id.textContent = `#${item.id}`;
+    const type = document.createElement('strong');
+    type.textContent = item.tipoCrime || 'Tipo não informado';
+    title.append(id, type);
+    header.append(title, createStatusPill(item.status));
+    const details = document.createElement('dl');
+    details.append(
+      createDetail('Data e hora', `${formatDate(item.data)} às ${item.hora || '—'}`),
+      createDetail('Local', `${item.cidade || '—'}/${item.uf || '—'}`),
+      createDetail('Equipe', item.perito),
+      createDetail('Descrição', item.descricao),
+    );
+    card.append(header, details);
+    container.appendChild(card);
+  });
 }
 
 export function renderOccurrencesTable(items, pagination) {
@@ -31,10 +83,7 @@ export function renderOccurrencesTable(items, pagination) {
       row.appendChild(createCell(`#${item.id}`));
       row.appendChild(createCell(item.tipoCrime));
       const statusCell = document.createElement('td');
-      const pill = document.createElement('span');
-      pill.className = `status-pill ${statusClass(item.status)}`;
-      pill.textContent = item.status;
-      statusCell.appendChild(pill);
+      statusCell.appendChild(createStatusPill(item.status));
       row.appendChild(statusCell);
       row.appendChild(createCell(formatDate(item.data)));
       row.appendChild(createCell(item.hora));
@@ -43,6 +92,7 @@ export function renderOccurrencesTable(items, pagination) {
       body.appendChild(row);
     });
   }
+  renderOccurrenceCards(items);
   document.getElementById('tableSummary').textContent = pagination.total
     ? `${formatNumber(pagination.total)} registro(s) encontrado(s).`
     : 'Nenhum registro encontrado.';
@@ -56,6 +106,8 @@ export function renderOccurrencesTable(items, pagination) {
 export function renderTableLoading() {
   const body = document.getElementById('occurrencesTableBody');
   body.innerHTML = '<tr><td colspan="7" class="empty-state">Carregando registros...</td></tr>';
+  const cards = document.getElementById('occurrenceCards');
+  cards.innerHTML = '<div class="occurrence-card"><strong>Carregando registros...</strong><div class="skeleton-block" style="height: 70px">.</div></div>';
 }
 
 export function updateSortIndicators(field, order) {
