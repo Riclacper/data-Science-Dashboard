@@ -31,20 +31,4 @@ jobs:
         run: ruff check .
 
       - name: Executar testes
-        id: pytest
-        continue-on-error: true
-        run: pytest -q > pytest.log 2>&1
-
-      - name: Publicar diagnóstico dos testes
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-diagnostic
-          path: backend/pytest.log
-          retention-days: 1
-
-      - name: Validar resultado dos testes
-        if: steps.pytest.outcome == 'failure'
-        run: |
-          cat pytest.log
-          exit 1
+        run: pytest -q
