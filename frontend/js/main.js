@@ -64,14 +64,12 @@ let dashboardLoading = false;
 function setLoading(isLoading) {
   document.body.classList.toggle('is-loading', isLoading);
   elements.main.setAttribute('aria-busy', String(isLoading));
-  elements.loadingStatus.hidden = !isLoading;
+  elements.loadingStatus.hidden = true; // Progresso visível no badge do cabeçalho.
 }
 
 function updateLoadingProgress(attempt, startedAt) {
   const seconds = Math.floor((performance.now() - startedAt) / 1000);
-  elements.loadingProgress.textContent = `Tentativa ${attempt} de 3 · Tempo decorrido: ${seconds}s`;
-  elements.loadingAttemptBar.style.width = `${(attempt / 3) * 100}%`;
-  elements.loadingAttemptBar.parentElement.setAttribute('aria-valuenow', String(attempt));
+  setApiStatus('loading', `Iniciando · ${attempt}/3 · ${seconds}s`);
 }
 
 function setApiStatus(mode, text) {
@@ -370,18 +368,14 @@ async function loadDashboard() {
   const startedAt = performance.now();
   let attempt = 1;
   window.clearInterval(loadingTimer);
-  elements.loadingTitle.textContent = 'Preparando o dashboard...';
-  elements.loadingMessage.textContent = 'O servidor gratuito pode precisar de alguns instantes para iniciar.';
   updateLoadingProgress(attempt, startedAt);
   loadingTimer = window.setInterval(() => updateLoadingProgress(attempt, startedAt), 1000);
   setLoading(true);
   setGlobalError('');
-  setApiStatus('loading', 'Iniciando servidor...');
   try {
     const onRetry = (nextAttempt, total) => {
       attempt = Math.max(attempt, nextAttempt);
-      setApiStatus('loading', `Iniciando servidor · tentativa ${attempt}/${total}`);
-      elements.loadingMessage.textContent = 'O servidor está despertando. Nova tentativa automática em andamento.';
+      // O cronômetro e a tentativa ficam no badge superior.
       updateLoadingProgress(attempt, startedAt);
     };
     const [status, cases] = await Promise.all([
@@ -403,7 +397,6 @@ async function loadDashboard() {
     const message = error instanceof ApiError ? error.message : 'Erro inesperado ao iniciar o dashboard.';
     setGlobalError(message);
     setApiStatus('danger', 'API indisponível');
-    elements.loadingMessage.textContent = 'Não foi possível conectar após as tentativas automáticas.';
   } finally {
     window.clearInterval(loadingTimer);
     loadingTimer = null;
