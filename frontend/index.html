@@ -76,7 +76,14 @@
 
     <div id="loadingStatus" class="loading-status" role="status" aria-live="polite">
       <span class="loader loader--small" aria-hidden="true"></span>
-      <div><strong>Inicializando os dados</strong><span>O serviço gratuito pode levar alguns segundos para responder.</span></div>
+      <div class="loading-status__details">
+        <strong id="loadingTitle">Preparando o dashboard...</strong>
+        <span id="loadingMessage">O servidor gratuito pode precisar de alguns instantes para iniciar.</span>
+        <span id="loadingProgress">Tentativa 1 de 3 · Tempo decorrido: 0s</span>
+        <div class="loading-attempts" role="progressbar" aria-label="Tentativas de conexão" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
+          <span id="loadingAttemptBar"></span>
+        </div>
+      </div>
     </div>
 
     <section id="globalError" class="error-panel" hidden aria-live="assertive">
