@@ -354,9 +354,16 @@ async function loadModelData() {
 async function loadDashboard() {
   setLoading(true);
   setGlobalError('');
-  setApiStatus('loading', 'Verificando API');
+  setApiStatus('loading', 'Iniciando servidor...');
   try {
-    const [status, cases] = await Promise.all([api.status(), api.cases()]);
+    const onRetry = (attempt, total) => {
+      setApiStatus('loading', `Iniciando servidor · tentativa ${attempt}/${total}`);
+      elements.loadingStatus.textContent = 'O servidor gratuito está despertando. A conexão será tentada automaticamente.';
+    };
+    const [status, cases] = await Promise.all([
+      api.status({ onRetry }),
+      api.cases({ onRetry }),
+    ]);
     if (!Array.isArray(cases)) throw new ApiError('A API retornou um formato de dados inesperado.');
     state.cases = cases;
     populateFiltersAndPrediction();
@@ -372,6 +379,7 @@ async function loadDashboard() {
     const message = error instanceof ApiError ? error.message : 'Erro inesperado ao iniciar o dashboard.';
     setGlobalError(message);
     setApiStatus('danger', 'API indisponível');
+    elements.loadingStatus.textContent = 'Não foi possível conectar após as tentativas automáticas.';
   } finally {
     setLoading(false);
   }
