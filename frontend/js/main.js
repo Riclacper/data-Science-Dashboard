@@ -41,6 +41,10 @@ const state = {
 const elements = {
   main: document.getElementById('conteudo-principal'),
   loadingStatus: document.getElementById('loadingStatus'),
+  loadingTitle: document.getElementById('loadingTitle'),
+  loadingMessage: document.getElementById('loadingMessage'),
+  loadingProgress: document.getElementById('loadingProgress'),
+  loadingAttemptBar: document.getElementById('loadingAttemptBar'),
   globalError: document.getElementById('globalError'),
   globalErrorMessage: document.getElementById('globalErrorMessage'),
   apiStatus: document.getElementById('apiStatus'),
@@ -54,11 +58,20 @@ const elements = {
 
 let searchTimer;
 let tableRequestSequence = 0;
+let loadingTimer = null;
+let dashboardLoading = false;
 
 function setLoading(isLoading) {
   document.body.classList.toggle('is-loading', isLoading);
   elements.main.setAttribute('aria-busy', String(isLoading));
   elements.loadingStatus.hidden = !isLoading;
+}
+
+function updateLoadingProgress(attempt, startedAt) {
+  const seconds = Math.floor((performance.now() - startedAt) / 1000);
+  elements.loadingProgress.textContent = `Tentativa ${attempt} de 3 · Tempo decorrido: ${seconds}s`;
+  elements.loadingAttemptBar.style.width = `${(attempt / 3) * 100}%`;
+  elements.loadingAttemptBar.parentElement.setAttribute('aria-valuenow', String(attempt));
 }
 
 function setApiStatus(mode, text) {
@@ -352,13 +365,24 @@ async function loadModelData() {
 }
 
 async function loadDashboard() {
+  if (dashboardLoading) return;
+  dashboardLoading = true;
+  const startedAt = performance.now();
+  let attempt = 1;
+  window.clearInterval(loadingTimer);
+  elements.loadingTitle.textContent = 'Preparando o dashboard...';
+  elements.loadingMessage.textContent = 'O servidor gratuito pode precisar de alguns instantes para iniciar.';
+  updateLoadingProgress(attempt, startedAt);
+  loadingTimer = window.setInterval(() => updateLoadingProgress(attempt, startedAt), 1000);
   setLoading(true);
   setGlobalError('');
   setApiStatus('loading', 'Iniciando servidor...');
   try {
-    const onRetry = (attempt, total) => {
+    const onRetry = (nextAttempt, total) => {
+      attempt = Math.max(attempt, nextAttempt);
       setApiStatus('loading', `Iniciando servidor · tentativa ${attempt}/${total}`);
-      elements.loadingStatus.textContent = 'O servidor gratuito está despertando. A conexão será tentada automaticamente.';
+      elements.loadingMessage.textContent = 'O servidor está despertando. Nova tentativa automática em andamento.';
+      updateLoadingProgress(attempt, startedAt);
     };
     const [status, cases] = await Promise.all([
       api.status({ onRetry }),
@@ -379,8 +403,11 @@ async function loadDashboard() {
     const message = error instanceof ApiError ? error.message : 'Erro inesperado ao iniciar o dashboard.';
     setGlobalError(message);
     setApiStatus('danger', 'API indisponível');
-    elements.loadingStatus.textContent = 'Não foi possível conectar após as tentativas automáticas.';
+    elements.loadingMessage.textContent = 'Não foi possível conectar após as tentativas automáticas.';
   } finally {
+    window.clearInterval(loadingTimer);
+    loadingTimer = null;
+    dashboardLoading = false;
     setLoading(false);
   }
 }
