@@ -95,3 +95,11 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+
+/* Progresso da reconexão: representa tentativas, não o boot interno do Render. */
+.loading-status__details { flex: 1; min-width: 0; }
+.loading-status__details #loadingProgress { font-variant-numeric: tabular-nums; font-weight: 700; }
+.loading-attempts { width: min(100%, 290px); height: 5px; overflow: hidden; border-radius: 999px; background: #dbe4ee; margin-top: 6px; }
+.loading-attempts > span { display: block; width: 33.333%; height: 100%; border-radius: inherit; background: #2563eb; transition: width 250ms ease; }
+@media (prefers-reduced-motion: reduce) { .loading-attempts > span { transition: none; } }
