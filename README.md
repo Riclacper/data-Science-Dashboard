@@ -5,7 +5,7 @@ Dashboard full stack para análise exploratória e classificação demonstrativa
 [![CI](https://github.com/Riclacper/data-Science-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Riclacper/data-Science-Dashboard/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000)](https://flask.palletsprojects.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1)](https://supabase.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1)](https://neon.tech/)
 [![Lighthouse](https://img.shields.io/badge/Lighthouse-Desktop%2093%20%7C%20Mobile%2087-0cce6b)](#qualidade-da-interface)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -14,6 +14,7 @@ Dashboard full stack para análise exploratória e classificação demonstrativa
 - **Frontend:** https://data-science-dashboard-vafr.onrender.com
 - **API:** https://data-science-dashboard-api.onrender.com
 - **Health check:** https://data-science-dashboard-api.onrender.com/health
+- **Banco demonstrativo:** Neon PostgreSQL (migração concluída em outubro de 2026)
 
 > O projeto utiliza a camada gratuita do Render. Após um período de inatividade, a primeira requisição pode levar alguns segundos enquanto o serviço é reiniciado.
 
@@ -23,7 +24,7 @@ O projeto demonstra uma arquitetura completa, desde a geração e persistência 
 
 - frontend público, modular e orientado a componentes de interface;
 - API REST desenvolvida com Flask e servida por Gunicorn;
-- persistência em PostgreSQL/Supabase com SQLAlchemy;
+- persistência em Neon PostgreSQL com SQLAlchemy;
 - filtros combináveis, busca, ordenação e paginação processados no backend;
 - gráficos interativos com Chart.js;
 - visualização alternativa dos gráficos em tabelas acessíveis;
@@ -38,7 +39,7 @@ O projeto demonstra uma arquitetura completa, desde a geração e persistência 
 flowchart LR
     U[Usuário] --> F[Frontend estático<br/>HTML, CSS e ES Modules]
     F -->|HTTPS / JSON| A[API Flask / Gunicorn]
-    A --> D[(PostgreSQL / Supabase)]
+    A --> D[(Neon PostgreSQL)]
     A --> M[Pipeline Random Forest<br/>scikit-learn]
     G[GitHub Actions] -->|sintaxe, lint e testes| R[Repositório GitHub]
     R -->|deploy automático| F
@@ -136,7 +137,7 @@ Os nomes, endereços, equipes e demais informações são fictícios. As métric
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript ES Modules, Chart.js |
 | Backend | Python, Flask, Flask-CORS, Gunicorn |
-| Banco | PostgreSQL, Supabase, SQLAlchemy, psycopg |
+| Banco | Neon PostgreSQL, SQLAlchemy, psycopg |
 | Data Science | pandas, scikit-learn, joblib |
 | Qualidade | Node.js, pytest, Ruff, GitHub Actions |
 | Deploy | Render Static Site, Render Web Service |
@@ -211,7 +212,7 @@ cp .env.example .env
 Exemplo:
 
 ```env
-DATABASE_URL=postgresql+psycopg://usuario:senha@host:6543/postgres?sslmode=require
+DATABASE_URL=postgresql+psycopg://usuario:senha@host-neon/neondb?sslmode=require
 CORS_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 FLASK_DEBUG=false
 AUTO_SEED_DEMO_DATA=true
